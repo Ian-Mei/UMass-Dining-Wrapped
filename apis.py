@@ -31,7 +31,6 @@ response = session.get(url)
 if response.status_code == 200:
     # Parse the HTML content of the page
     soup = BeautifulSoup(response.text, 'html.parser')
-
     # Assuming you want to extract information from a specific section with a class
     section_class = 'history_table table-responsive'
     section = soup.find('div', class_=section_class)

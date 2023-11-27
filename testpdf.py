@@ -5,8 +5,11 @@ import fitz
 import requests
 import tabula
 from datetime import date
+import shutil
+import pandas
+import numpy as np
 
-with open(r"UMass-Dining-Wrapped\cookies.json", "r") as file:
+with open(r"cookies.json", "r") as file:
     cookies_list = json.load(file)
 
 # Convert the list of cookies to a CookieJar
@@ -25,7 +28,6 @@ def download_pdf(url, save_path):
         pdf_file.write(response.content)
 
 
-import shutil
 
 def addpage(url, save_path):
     response = session.get(url)
@@ -60,13 +62,25 @@ if __name__ == "__main__":
     month = today.month
     day = today.day
     path = f"https://get.cbord.com/umass/full/historyPDF.php?dateS={year}-{month}-{day-14}&dateE={year}-{month}-{day}"
-    save_path = "UMass-Dining-Wrapped\info.pdf"
+    save_path = "info.pdf"
+    print(path)
     download_pdf(path, save_path)
+    while(True):
+        day = day - 10
+        if(day<1):
+            day+=31
+            month-=1
+        path = f"https://get.cbord.com/umass/full/historyPDF.php?dateS={year}-{month}-{day-14}&dateE={year}-{month}-{day}"
+        addpage(path, save_path)
+        if(month == 8 & day < 20):
+            break
 
-    day = day - 12
-    path = f"https://get.cbord.com/umass/full/historyPDF.php?dateS={year}-{month}-{day-14}&dateE={year}-{month}-{day}"
-    addpage(path, save_path)
+    tables = tabula.read_pdf("info.pdf", pages="all")
+    print("___________________________________")
+    df = pandas.concat(tables)
+    print(df)
+    print("___________________________________")
+    print(df[df["Activity Details"] == "HampDC2"])
+    print(df.dtypes)
 
-    tables = tabula.read_pdf("UMass-Dining-Wrapped\info.pdf", pages="all")
-    print(tables)
 
