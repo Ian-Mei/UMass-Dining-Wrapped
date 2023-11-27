@@ -20,6 +20,10 @@ def download_pdf(url, save_path):
     with open(save_path, 'wb') as pdf_file:
         pdf_file.write(response.content)
 
+def addpage(url,save_path):
+    pdf = open(save_path,'rb')
+    
+    
 
 if __name__ == '__main__':
 
