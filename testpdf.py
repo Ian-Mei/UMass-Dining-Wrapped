@@ -6,7 +6,7 @@ import requests
 import tabula
 from datetime import date
 import shutil
-import pandas
+import pandas as pd
 import numpy as np
 
 with open(r"cookies.json", "r") as file:
@@ -77,10 +77,13 @@ if __name__ == "__main__":
 
     tables = tabula.read_pdf("info.pdf", pages="all")
     print("___________________________________")
-    df = pandas.concat(tables)
+    df = pd.concat(tables)
+    df = df.reset_index(drop=True)
     print(df)
     print("___________________________________")
-    print(df[df["Activity Details"] == "HampDC2"])
+    df = df.drop_duplicates(subset='Date & Time')
+    df = df.reset_index(drop=True)
+    print(df)
     print(df.dtypes)
 
 
