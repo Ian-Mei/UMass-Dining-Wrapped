@@ -1,4 +1,6 @@
-# extract_doc_info.py
+import updatecookies
+
+
 import json
 from PyPDF2 import PdfFileReader
 import fitz
@@ -9,17 +11,19 @@ import shutil
 import pandas as pd
 import numpy as np
 
-with open(r"cookies.json", "r") as file:
-    cookies_list = json.load(file)
-
-# Convert the list of cookies to a CookieJar
-cookies = requests.utils.cookiejar_from_dict(
-    {cookie["name"]: cookie["value"] for cookie in cookies_list}
-)
-
-# Create a session and set the loaded cookies
 session = requests.Session()
-session.cookies = cookies
+def loadcookies():
+    #updatecookies.updatecookies()
+    with open(r"cookies.json", "r") as file:
+        cookies_list = json.load(file)
+
+    # Convert the list of cookies to a CookieJar
+    cookies = requests.utils.cookiejar_from_dict(
+        {cookie["name"]: cookie["value"] for cookie in cookies_list}
+    )
+
+    # Create a session and set the loaded cookies
+    session.cookies = cookies
 
 
 def download_pdf(url, save_path):
@@ -52,18 +56,14 @@ def addpage(url, save_path):
     # Replace the original file with the temporary one
     shutil.move(temp_save_path, save_path)
 
-
-
-
-
-if __name__ == "__main__":
+def getdata():
+    loadcookies()
     today = date.today()
     year = today.year
     month = today.month
     day = today.day
     path = f"https://get.cbord.com/umass/full/historyPDF.php?dateS={year}-{month}-{day-14}&dateE={year}-{month}-{day}"
     save_path = "info.pdf"
-    print(path)
     download_pdf(path, save_path)
     while(True):
         day = day - 10
@@ -76,14 +76,9 @@ if __name__ == "__main__":
             break
 
     tables = tabula.read_pdf("info.pdf", pages="all")
-    print("___________________________________")
     df = pd.concat(tables)
-    df = df.reset_index(drop=True)
-    print(df)
-    print("___________________________________")
     df = df.drop_duplicates(subset='Date & Time')
     df = df.reset_index(drop=True)
-    print(df)
-    print(df.dtypes)
+    return df
 
 
