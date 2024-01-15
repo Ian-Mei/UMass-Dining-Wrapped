@@ -16,9 +16,9 @@ def updatecookies():
             cookies = driver.get_cookies()
             driver.quit()
             break
+    return cookies
 
-    with open("cookies.json", "w") as outfile:
-        json.dump(cookies,outfile)
+    
 
 
 

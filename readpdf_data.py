@@ -3,7 +3,7 @@ import tabula
 import pandas as pd
 
 def returndata():
-    #generate_pdf.generate_pdf()
+    generate_pdf.generate_pdf()
     tables = tabula.read_pdf("info.pdf", pages="all")
     df = pd.concat(tables)
     df = df.astype(str)
@@ -11,7 +11,6 @@ def returndata():
     # pd.set_option('display.max_rows', None)
     # pd.set_option('display.max_columns', None)
     # print(df)
-    df.drop_duplicates(keep='first', inplace=True)
     
     return df
 

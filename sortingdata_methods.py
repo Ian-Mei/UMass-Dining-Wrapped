@@ -11,20 +11,21 @@ def preproccessrawdata(rawdata):
     for column in rawdata.columns:
         if rawdata[column].dtype == 'O':
             rawdata[column] = rawdata[column].str.strip()
-    rawdata = rawdata[rawdata['Activity_Details'] != 'Meal Plan Office']
-    rawdata = rawdata[~rawdata['Activity_Details'].str.contains("GET FUNDS DEPOSITS|Deposit to Student Debit Plan")]
+    #rawdata = rawdata[rawdata['Activity_Details'] != 'Meal Plan Office']
+    rawdata = rawdata[~rawdata['Activity_Details'].str.contains("GET FUNDS DEPOSITS|Deposit to Student Debit Plan|PatronImport Location|Meal Plan Office")]
     rawdata.reset_index(drop=True, inplace=True)
     rawdata['Date_Time'] = rawdata['Date_Time'].str.replace(r'(AM|PM).*$', r'\1', regex=True)
     rawdata['Date_Time'] = pd.to_datetime(rawdata['Date_Time'],format="%B %d, %Y, %I:%M%p")
     rawdata['Amount'] = rawdata['Amount'].str.split('-').str[1]
+    rawdata.drop_duplicates(keep='first', inplace=True)
     return rawdata
 
-def is_unlimited(rawdata):
-    return (rawdata['Account_Name'] == "E Unlimited 250").any() | (rawdata['Account_Name'] == "M Unlimited DC").any()
+def is_mealswipes(rawdata):
+    return (rawdata['Account_Name'] == "E Unlimited 250").any() | (rawdata['Account_Name'] == "M Unlimited DC").any() | (rawdata['Account_Name'] == "C Basic Plan").any()
 
 
 def unlimitedmealswipedata(rawdata):
-    mealswipes = rawdata[rawdata['Account_Name'].isin(["E Unlimited 250","M Unlimited DC"])]
+    mealswipes = rawdata[rawdata['Account_Name'].isin(["E Unlimited 250","M Unlimited DC","C Basic Plan"])]
     return mealswipes
 
 def dining_hall_data(rawdata):
@@ -61,15 +62,18 @@ def info_DC(data):
         return pd.DataFrame({name:[breakfast,lunch,dinner,latenight,grabngo,len(data)]}).reset_index(drop=True)
 
 def num_breakfast(data):
-    data = data[~data['Activity_Details'].str.contains("1")]
+    if(data['Activity_Details'].str.contains("Frank|Worc")).any():
+        data = data[~data['Activity_Details'].str.contains("1")]
     return len(data[data['Date_Time'].dt.time < pd.to_datetime('11:00').time()])
 
 def num_lunch(data):
-    data = data[~data['Activity_Details'].str.contains("1")]
+    if(data['Activity_Details'].str.contains("Frank|Worc")).any():
+        data = data[~data['Activity_Details'].str.contains("1")]
     return len(data[(data['Date_Time'].dt.time >= pd.to_datetime('11:00').time()) & (data['Date_Time'].dt.time < pd.to_datetime('16:30').time())])
     
 def num_dinner(data):
-    data = data[~data['Activity_Details'].str.contains("1")]
+    if(data['Activity_Details'].str.contains("Frank|Worc")).any():
+        data = data[~data['Activity_Details'].str.contains("1")]
     return len(data[(data['Date_Time'].dt.time >= pd.to_datetime('16:30').time()) & (data['Date_Time'].dt.time < pd.to_datetime('21:00').time())])
 
 def num_latenight(data):
@@ -78,12 +82,12 @@ def num_latenight(data):
         num = len(data[(data['Date_Time'].dt.time >= pd.to_datetime('21:00').time())])
         return num
     else:
-        return "NA"
+        return 'NA'
     
 def num_grabngo(data):
-    data = data[data['Activity_Details'].str.contains("1")]
-    num = len(data)
-    if(num>0):
+    if(data['Activity_Details'].str.contains("Frank|Worc")).any():
+        data = data[data['Activity_Details'].str.contains("1")]
+        num = len(data)
         return num
     else:
         return 'NA'
@@ -93,13 +97,13 @@ def totaldollars(data):
     data.loc[:, 'Amount'] = data['Amount'].str.replace('-', '')
     data.loc[:, 'Amount'] = pd.to_numeric(data['Amount'])
     allsum = data['Amount'].sum()
-    if(data['Account_Name'] == "C Basic Plan").any():
+    if(data['Account_Name'].str.contains("C Basic Plan|YCMP")).any():
         allsum *=12
     return allsum
 
 def process_unique_values(df, column_name):
     processed_data = pd.DataFrame()
-
+    df = removenums(column_name,df)
     unique_values = df[column_name].unique()
     
     for value in unique_values:
@@ -115,15 +119,24 @@ def info(data):
         breakfast = num_breakfast(data)
         lunch = num_lunch(data)
         dinner = num_dinner(data) 
-        if(type(num_latenight(data)) == int):
+        if(type(num_latenight(data)) is int):
             dinner+= num_latenight(data)
         totaldollar = totaldollars(data)
-        return pd.DataFrame({name:[breakfast,lunch,dinner,len(data),f"${format(totaldollar,'.2f')}"]}).reset_index(drop=True)
+        return pd.DataFrame({name:[int(breakfast),int(lunch),int(dinner),int(len(data)),totaldollar]}).reset_index(drop=True)
+
+
+def fillEmpty(data):
+    DCs = ['HampDC','WorcDC','FrankDC','BerkDC']
+    for dininghall in DCs:
+        if dininghall not in data.columns:
+            data[dininghall] = {"Breakfast" : 0,"Lunch" : 0,"Dinner" : 0,"Late_Night" : 0,"GrabNGo" : 0,"Total" : 0}
+    return data
+
 
 if __name__ == "__main__":
     rawdata = readpdf_data.returndata()
     rawdata = preproccessrawdata(rawdata)
-    if(is_unlimited(rawdata)):
+    if(is_mealswipes(rawdata)):
         hamp,berk,frank,woo = dining_hall_data(rawdata)
         print(hamp)
         

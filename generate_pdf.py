@@ -10,17 +10,10 @@ import shutil
 
 session = requests.Session()
 def loadcookies():
-    updatecookies.updatecookies()
-    with open(r"cookies.json", "r") as file:
-        cookies_list = json.load(file)
+    cookies = updatecookies.updatecookies()
+    session.cookies.update({cookie['name']: cookie['value'] for cookie in cookies})
 
-    # Convert the list of cookies to a CookieJar
-    cookies = requests.utils.cookiejar_from_dict(
-        {cookie["name"]: cookie["value"] for cookie in cookies_list}
-    )
-
-    # Create a session and set the loaded cookies
-    session.cookies = cookies
+    
 
 
 def download_pdf(url, save_path):
@@ -62,7 +55,7 @@ def addpage(url, save_path):
 
 def generate_pdf():
     loadcookies()
-    today = date.today()
+    today = date(2023,12,16)
     year = today.year
     month = today.month
     day = today.day
@@ -81,7 +74,7 @@ def generate_pdf():
         
         addpage(path, save_path)
 
-        if month == 8 and day < 10:
+        if month == 8 and day < 25:
             break
 
         current_date -= timedelta(days=3)
