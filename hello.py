@@ -6,9 +6,12 @@ import userdata
 app = Flask(__name__)
 
 @app.route("/")
-@app.route("/home")
+@app.route("/realhome")
 def home():
-    return render_template("home.html")
+    return render_template("realhome.html")
+@app.route("/loading")
+def loading():
+    return render_template("loading.html")
 
 @app.route("/hello_world", methods=["POST"])
 def hello_world():

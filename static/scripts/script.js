@@ -32,7 +32,7 @@ function reveal() {
       (function(index) {
         setTimeout(function() {
           dramaticreveal(reveals[index]);
-        }, 2500);
+        }, 2000);
       })(i);
     } else {
       reveals[i].classList.remove("active");

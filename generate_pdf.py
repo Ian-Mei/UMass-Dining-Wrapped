@@ -55,7 +55,7 @@ def addpage(url, save_path):
 
 def generate_pdf():
     loadcookies()
-    today = date(2023,12,16)
+    today = date.today()
     year = today.year
     month = today.month
     day = today.day
@@ -74,7 +74,7 @@ def generate_pdf():
         
         addpage(path, save_path)
 
-        if month == 8 and day < 25:
+        if month == 1 and day < 30:
             break
 
         current_date -= timedelta(days=3)

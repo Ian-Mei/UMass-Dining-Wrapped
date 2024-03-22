@@ -11,7 +11,7 @@
         <section id="home">
           <img src="{{ url_for('static', filename='styles/imgs/background1.png') }}" class="background">
           <div class="container reveal">
-            <h1>Welcome to Fall 23 UMass Dining Wrapped &#8595;</h1>
+            <h1>Welcome to Spring 24 UMass Dining Wrapped &#8595;</h1>
           </div>
         </section>
 
@@ -43,7 +43,12 @@
                       <span class="itemname">Dinner</span>
                       <span class="itemvalue">{{rawmealswipes[topDCs.index[0]]['Dinner']}}<span>Times</span></span>
                     </div>
-                    
+                    {% if rawmealswipes[topDCs.index[0]]['GrabNGo'] != 'NA' %}
+                      <div class="listitem">
+                        <span class="itemname">GrabNGo</span>
+                        <span class="itemvalue">{{rawmealswipes[topDCs.index[0]]['GrabNGo']}}<span>Times</span></span>
+                      </div>
+                    {% endif %}
                     <div class="listitem">
                       
                       <span class="itemname">Total</span>
@@ -145,7 +150,7 @@
                 
               </div>
               <div class="rectangle"></div>
-              <div class="text-wrapper-3">Fall 23 Wrapped</div>
+              <div class="text-wrapper-3">Spring 24 Wrapped</div>
               <div class="text-wrapper-4">@ian.meiii</div>
               <img class="umassdiningwrapped" src="{{ url_for('static', filename='styles/imgs/UMassDiningWrapped.jpg') }}" />
               <div class="text-wrapper-5">Mealswipes Used</div>

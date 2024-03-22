@@ -5,12 +5,13 @@
     <meta property="og:title" content="LoadingPage - UMass Dining Wrapped" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta charset="utf-8" />
+    <meta http-equiv="refresh" content="1;url={{ url_for('test') }}">
     <style>
       * {margin:0; padding: 0; color:red;overflow: hidden;}
   </style>
   </head>
   <body>
     <canvas id="tv-screen" height="100pv"></canvas>
-    <script src="loading.js"></script>
+    <script src="{{ url_for('static', filename='scripts/loading.js') }}"></script>
 </body>
 </html>
