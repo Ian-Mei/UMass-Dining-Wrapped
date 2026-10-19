@@ -4,13 +4,17 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
 
-from flask import Flask, render_template, request
+from flask import Flask, jsonify, render_template, request
 from waitress import serve
 
 from wrapped import ParseError, build_wrapped, parse_pdfs
+from wrapped.transactions import count_rows
 
 GET_ORIGIN = "https://get.cbord.com"
 MAX_UPLOAD_MB = 25
+# GET silently returns only the newest page of rows (17 when we checked) per history PDF, so a
+# date window this full may be missing its oldest rows and gets downloaded again in halves.
+WINDOW_FULL_ROWS = 15
 BOOKMARKLET_SOURCE = Path(__file__).parent / "static" / "scripts" / "bookmarklet.js"
 # Local debugging only: when set, every upload is saved here (plus a traceback if it crashes).
 # Never set this on a public deployment; it stores people's transaction history.
@@ -44,6 +48,16 @@ def home():
 def import_from_get():
     """Opened by the bookmarklet; receives the history PDFs from the GET tab."""
     return render_template("import.html", get_origin=GET_ORIGIN)
+
+
+@app.post("/rows")
+def rows():
+    """Called by /import for each downloaded window: how many rows, and might it be cut off?"""
+    try:
+        n = count_rows(request.get_data())
+    except ParseError as e:
+        return jsonify(error=str(e)), 400
+    return jsonify(rows=n, full=n >= WINDOW_FULL_ROWS)
 
 
 def save_upload(pdfs):

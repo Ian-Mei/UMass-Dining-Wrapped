@@ -1,6 +1,7 @@
-// Runs on get.cbord.com inside the user's own logged-in session: downloads this semester's
-// transaction history PDFs and hands them to the Wrapped site's /import page. The user's
-// login never touches our server.
+// Runs on get.cbord.com inside the user's own logged-in session: opens the Wrapped site's /import
+// page and downloads the transaction history PDFs it asks for. /import decides which date windows
+// to fetch (static/scripts/history_windows.js), so that logic can change without anyone
+// re-adding the bookmark. The user's login never touches our server.
 //
 // app.py inlines this file into a javascript: link, so only use full-line comments
 // and end every statement with a semicolon. The `void` keeps the browser from replacing
@@ -8,23 +9,13 @@
 void (async () => {
   const APP = "__APP_ORIGIN__";
   const HISTORY_PDF = "/umass/full/historyPDF.php";
-  // History is fetched in short overlapping windows in case GET caps rows per PDF;
-  // the server drops the duplicate rows from the overlap.
-  const WINDOW_DAYS = 5;
-  const STEP_DAYS = 4;
-  const DELAY_MS = 250;
   const RETRIES = 3;
+  const DATE = /^\d{4}-\d{1,2}-\d{1,2}$/;
 
   if (location.hostname !== "get.cbord.com") {
     alert("Log into GET (get.cbord.com) first, then click this bookmark again.");
     return;
   }
-
-  let markReady;
-  const ready = new Promise((resolve) => { markReady = resolve; });
-  window.addEventListener("message", (event) => {
-    if (event.origin === APP && event.data && event.data.type === "ready") markReady();
-  });
 
   // Must open synchronously on the click, before any await, or the pop-up gets blocked.
   const app = window.open(APP + "/import", "dining-wrapped");
@@ -32,33 +23,7 @@ void (async () => {
     alert("Your browser blocked the pop-up. Allow pop-ups for get.cbord.com and click the bookmark again.");
     return;
   }
-  const send = (message, transfer) => ready.then(() => app.postMessage(message, APP, transfer || []));
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  const fmt = (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-
-  const today = new Date();
-  const year = today.getFullYear();
-  const monthDay = (today.getMonth() + 1) * 100 + today.getDate();
-  let start;
-  let end;
-  if (monthDay < 115) {
-    start = new Date(year - 1, 7, 15);
-    end = new Date(year - 1, 11, 31);
-  } else if (monthDay < 815) {
-    start = new Date(year, 0, 15);
-    end = new Date(year, 4, 31);
-  } else {
-    start = new Date(year, 7, 15);
-    end = new Date(year, 11, 31);
-  }
-  if (end > today) end = today;
-
-  const windows = [];
-  for (let s = new Date(start); s <= end; s.setDate(s.getDate() + STEP_DAYS)) {
-    const e = new Date(s);
-    e.setDate(e.getDate() + WINDOW_DAYS);
-    windows.push([new Date(s), e]);
-  }
 
   const fetchPdf = async (url) => {
     for (let attempt = 1; ; attempt++) {
@@ -74,17 +39,18 @@ void (async () => {
     }
   };
 
-  const pdfs = [];
-  try {
-    for (let i = 0; i < windows.length; i++) {
-      const [s, e] = windows[i];
-      pdfs.push(await fetchPdf(`${HISTORY_PDF}?dateS=${fmt(s)}&dateE=${fmt(e)}`));
-      send({ type: "progress", done: i + 1, total: windows.length });
-      await sleep(DELAY_MS);
+  // Clicking the bookmark again replaces the old listener instead of answering every request twice.
+  window.removeEventListener("message", window.diningWrappedListener);
+  window.diningWrappedListener = async (event) => {
+    if (event.origin !== APP || event.source !== app) return;
+    const { type, id, start, end } = event.data || {};
+    if (type !== "fetch" || !DATE.test(start) || !DATE.test(end)) return;
+    try {
+      const pdf = await fetchPdf(`${HISTORY_PDF}?dateS=${start}&dateE=${end}`);
+      app.postMessage({ type: "pdf", id, pdf }, APP, [pdf]);
+    } catch (err) {
+      app.postMessage({ type: "error", id, message: "Couldn't download your history from GET: " + (err.message || err) }, APP);
     }
-  } catch (err) {
-    send({ type: "error", message: "Couldn't download your history from GET: " + (err.message || err) });
-    return;
-  }
-  send({ type: "pdfs", pdfs }, pdfs);
+  };
+  window.addEventListener("message", window.diningWrappedListener);
 })();

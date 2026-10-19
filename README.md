@@ -10,10 +10,13 @@ Not affiliated with UMass or UMass Dining.
 Nobody types their NetID or password into this site. There are two ways in:
 
 1. **Bookmarklet.** The home page has a **Dining Wrapped** button to drag to the bookmarks bar.
-   The user logs into GET normally, then clicks the bookmark. It runs inside their own GET tab,
-   downloads this semester's history from `historyPDF.php` in short date windows, opens this
-   site's `/import` page and hands it the PDFs with `postMessage`. `/import` then submits them
-   to `/wrapped`. Source: [`static/scripts/bookmarklet.js`](static/scripts/bookmarklet.js).
+   The user logs into GET normally, then clicks the bookmark. It runs inside their own GET tab and
+   opens this site's `/import` page, which asks the GET tab (via `postMessage`) for this semester's
+   history from `historyPDF.php`, one date window at a time, then submits the PDFs to `/wrapped`.
+   GET only returns the newest page of rows (17) per request and silently drops the rest, so
+   `/import` checks each window with `/rows` and downloads a full one again in halves.
+   Sources: [`static/scripts/bookmarklet.js`](static/scripts/bookmarklet.js) (the fetcher) and
+   [`static/scripts/history_windows.js`](static/scripts/history_windows.js) (which windows).
 2. **Upload.** GET → View All Transaction History → **Export PDF**, then upload it on the home page.
 
 PDFs are parsed in memory and never written to disk.
@@ -21,7 +24,7 @@ PDFs are parsed in memory and never written to disk.
 ## Layout
 
 ```
-app.py                  Flask routes: / (home), /import (bookmarklet landing), /wrapped (results)
+app.py                  Flask routes: / (home), /import (bookmarklet landing), /rows, /wrapped (results)
 wrapped/
   transactions.py       PDF bytes → clean DataFrame of charges (PyMuPDF table extraction)
   stats.py              charges → Wrapped (dining halls, vendors, laundry, totals)
@@ -39,6 +42,7 @@ pip install -r requirements-dev.txt
 python app.py                         # serves http://localhost:8000 with waitress
 flask --app app run --debug           # or the Flask dev server with auto-reload
 python -m pytest                      # tests
+node --test tests/                    # bookmarklet date-window tests
 python -m wrapped path/to/history.pdf # check what the parser makes of a real export
 ```
 

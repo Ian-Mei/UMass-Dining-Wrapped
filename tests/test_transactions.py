@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from wrapped.transactions import ParseError, clean, parse_pdfs, parse_timestamp, rows_from_pdf
+from wrapped.transactions import ParseError, clean, count_rows, parse_pdfs, parse_timestamp, rows_from_pdf
 
 from .conftest import charge, make_history_pdf, swipe
 
@@ -19,6 +19,14 @@ def test_keeps_spaces_when_words_are_drawn_separately():
         charge("Blue Wall 1", "09/02/26 01:15:00 PM", 9.5),
     ]
     assert rows_from_pdf(make_history_pdf(rows, word_by_word=True)) == rows
+
+
+def test_count_rows():
+    rows = [swipe("CPOS Worcester DC", f"09/{d:02d}/26 12:00:00 PM") for d in range(1, 21)]
+    assert count_rows(make_history_pdf(rows, word_by_word=True)) == 20
+    assert count_rows(make_history_pdf([])) == 0
+    with pytest.raises(ParseError):
+        count_rows(b"not a pdf")
 
 
 def test_rejects_files_that_are_not_pdfs():

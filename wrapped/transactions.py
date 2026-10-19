@@ -37,24 +37,50 @@ class ParseError(ValueError):
     """Raised with a message that is safe to show the user."""
 
 
-def rows_from_pdf(data: bytes) -> list[list[str]]:
+def open_pdf(data: bytes):
     try:
-        doc = fitz.open(stream=data, filetype="pdf")
+        return fitz.open(stream=data, filetype="pdf")
     except Exception as e:
         raise ParseError("One of those files isn't a readable PDF.") from e
 
+
+def count_rows(data: bytes) -> int:
+    """Number of transactions in a history PDF, without the slow table detection.
+
+    Each row's timestamp is its own line of page text; the "Statement Period: ..." line isn't.
+    """
+    with open_pdf(data) as doc:
+        return sum(
+            parse_timestamp(line) is not None
+            for page in doc
+            for line in page.get_text().splitlines()
+        )
+
+
+def rows_from_pdf(data: bytes) -> list[list[str]]:
     rows = []
-    with doc:
+    with open_pdf(data) as doc:
         for page in doc:
+            # Read words by cell area rather than table.extract(): GET draws each word
+            # separately, and extract() glues them together ("08/20/2602:09:40PM", "600\n-").
+            words = page.get_text("words", sort=True)
             for table in page.find_tables().tables:
                 for table_row in table.rows:
-                    # Read text by cell area rather than table.extract(): GET draws each word
-                    # separately, and extract() glues them together ("08/20/2602:09:40PM", "600\n-").
-                    row = [page.get_textbox(cell).strip() if cell else "" for cell in table_row.cells]
+                    row = [cell_text(words, cell) for cell in table_row.cells]
                     if len(row) != len(RAW_COLUMNS) or row[0] == HEADER_CELL:
                         continue
                     rows.append(row)
     return rows
+
+
+def cell_text(words, cell) -> str:
+    if not cell:
+        return ""
+    x0, y0, x1, y1 = cell
+    return " ".join(
+        w[4] for w in words
+        if x0 <= (w[0] + w[2]) / 2 <= x1 and y0 <= (w[1] + w[3]) / 2 <= y1
+    )
 
 
 def parse_pdfs(pdfs) -> pd.DataFrame:

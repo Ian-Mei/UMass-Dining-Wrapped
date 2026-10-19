@@ -26,35 +26,79 @@
     </form>
 
     <script src="{{ url_for('static', filename='scripts/loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/history_windows.js') }}"></script>
     <script>
       const GET_ORIGIN = {{ get_origin|tojson }};
+      const ROWS_URL = {{ url_for('rows')|tojson }};
+      const DELAY_MS = 250;
+      // GET retries take a few seconds; no answer at all usually means a bookmark from before
+      // the bookmarklet only fetched what this page asks for.
+      const TIMEOUT_MS = 30000;
       const statusEl = document.getElementById("status");
       const form = document.getElementById("upload");
 
       startLoadingScreen(document.getElementById("tv-screen"), {{ url_for('static', filename='imgs/umass.png')|tojson }});
 
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const pending = new Map();
+      let nextId = 0;
+
       window.addEventListener("message", (event) => {
         // Only accept data from the GET tab that opened us.
         if (event.origin !== GET_ORIGIN || event.source !== window.opener) return;
-        const message = event.data || {};
-
-        if (message.type === "progress") {
-          statusEl.textContent = `Downloading your history from GET (${message.done}/${message.total})`;
-        } else if (message.type === "error") {
-          statusEl.textContent = message.message;
-        } else if (message.type === "pdfs") {
-          statusEl.textContent = "Crunching the numbers…";
-          const files = new DataTransfer();
-          message.pdfs.forEach((pdf, i) => {
-            files.items.add(new File([pdf], `history-${i}.pdf`, { type: "application/pdf" }));
-          });
-          form.elements.pdfs.files = files.files;
-          form.submit();
-        }
+        const { type, id, pdf, message } = event.data || {};
+        const request = pending.get(id);
+        if (!request) return;
+        pending.delete(id);
+        if (type === "pdf") request.resolve(pdf);
+        else request.reject(new Error(message || "Couldn't download your history from GET."));
       });
 
+      // Ask the GET tab to download one date window.
+      const download = (w) => new Promise((resolve, reject) => {
+        const id = nextId++;
+        pending.set(id, { resolve, reject });
+        window.opener.postMessage({ type: "fetch", id, start: HistoryWindows.fmt(w.start), end: HistoryWindows.fmt(w.end) }, GET_ORIGIN);
+        setTimeout(() => {
+          if (pending.delete(id)) {
+            reject(new Error("The GET tab stopped answering. Keep it open, drag the newest Dining Wrapped button from the home page to your bookmarks, and try again."));
+          }
+        }, TIMEOUT_MS);
+      });
+
+      const isFull = async (pdf) => {
+        const res = await fetch(ROWS_URL, { method: "POST", body: pdf });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error);
+        return body.full;
+      };
+
+      const run = async () => {
+        const queue = HistoryWindows.initial(new Date());
+        const pdfs = [];
+        let done = 0;
+        while (queue.length) {
+          statusEl.textContent = `Downloading your history from GET (${done}/${done + queue.length})`;
+          const w = queue.shift();
+          const pdf = await download(w);
+          // A full window may be missing its oldest rows, so fetch it again in halves.
+          if (HistoryWindows.canSplit(w) && await isFull(pdf)) queue.unshift(...HistoryWindows.split(w));
+          else pdfs.push(pdf);
+          done++;
+          await sleep(DELAY_MS);
+        }
+
+        statusEl.textContent = "Crunching the numbers…";
+        const files = new DataTransfer();
+        pdfs.forEach((pdf, i) => {
+          files.items.add(new File([pdf], `history-${i}.pdf`, { type: "application/pdf" }));
+        });
+        form.elements.pdfs.files = files.files;
+        form.submit();
+      };
+
       if (window.opener) {
-        window.opener.postMessage({ type: "ready" }, GET_ORIGIN);
+        run().catch((err) => { statusEl.textContent = err.message; });
       } else {
         statusEl.innerHTML = 'This page opens from the bookmarklet. <a href="{{ url_for("home") }}" style="color:white">Go back</a>';
       }
