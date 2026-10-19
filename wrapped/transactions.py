@@ -45,7 +45,7 @@ def open_pdf(data: bytes):
 
 
 def count_rows(data: bytes) -> int:
-    """Number of transactions in a history PDF, without the slow table detection.
+    """Number of transactions in a history PDF, from its text alone (no table layout needed).
 
     Each row's timestamp is its own line of page text; the "Statement Period: ..." line isn't.
     """
@@ -61,21 +61,50 @@ def rows_from_pdf(data: bytes) -> list[list[str]]:
     rows = []
     with open_pdf(data) as doc:
         for page in doc:
-            # Read words by cell area rather than table.extract(): GET draws each word
-            # separately, and extract() glues them together ("08/20/2602:09:40PM", "600\n-").
+            # Read the drawn grid and put each word in its cell. page.find_tables() does the same
+            # but takes ~1s a page, and its extract() glues GET's separately drawn words together
+            # ("08/20/2602:09:40PM", "600\n-").
+            xs, ys = grid_edges(page)
+            if len(xs) != len(RAW_COLUMNS) + 1:
+                continue
             words = page.get_text("words", sort=True)
-            for table in page.find_tables().tables:
-                for table_row in table.rows:
-                    row = [cell_text(words, cell) for cell in table_row.cells]
-                    if len(row) != len(RAW_COLUMNS) or row[0] == HEADER_CELL:
-                        continue
+            for y0, y1 in zip(ys, ys[1:]):
+                row = [cell_text(words, (x0, y0, x1, y1)) for x0, x1 in zip(xs, xs[1:])]
+                if any(row) and row[0] != HEADER_CELL:
                     rows.append(row)
     return rows
 
 
+def grid_edges(page) -> tuple[list[float], list[float]]:
+    """Column and row edges of the table, from its border lines and boxes."""
+    xs, ys, top, bottom = [], [], float("inf"), float("-inf")
+    for path in page.get_drawings():
+        for item in path["items"]:
+            if item[0] == "re":
+                r = item[1]
+                xs += [r.x0, r.x1]
+                ys += [r.y0, r.y1]
+                top, bottom = min(top, r.y0), max(bottom, r.y1)
+            elif item[0] == "l":
+                a, b = item[1], item[2]
+                if abs(a.y - b.y) < 1:
+                    ys.append(a.y)
+                elif abs(a.x - b.x) < 1:
+                    xs.append(a.x)
+                    top, bottom = min(top, a.y, b.y), max(bottom, a.y, b.y)
+    # Only horizontal lines between the top and bottom of the column borders belong to the table.
+    return merge_close(xs), merge_close(y for y in ys if top - 1 <= y <= bottom + 1)
+
+
+def merge_close(values, tolerance=1.0) -> list[float]:
+    merged = []
+    for v in sorted(values):
+        if not merged or v - merged[-1] > tolerance:
+            merged.append(v)
+    return merged
+
+
 def cell_text(words, cell) -> str:
-    if not cell:
-        return ""
     x0, y0, x1, y1 = cell
     return " ".join(
         w[4] for w in words

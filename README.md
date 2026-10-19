@@ -26,7 +26,7 @@ PDFs are parsed in memory and never written to disk.
 ```
 app.py                  Flask routes: / (home), /import (bookmarklet landing), /rows, /wrapped (results)
 wrapped/
-  transactions.py       PDF bytes → clean DataFrame of charges (PyMuPDF table extraction)
+  transactions.py       PDF bytes → clean DataFrame of charges (PyMuPDF: table grid + words)
   stats.py              charges → Wrapped (dining halls, vendors, laundry, totals)
   personality.py        personality rules
   __main__.py           python -m wrapped history.pdf  (print stats for a local PDF)
