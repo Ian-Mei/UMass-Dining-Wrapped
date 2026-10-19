@@ -68,3 +68,34 @@ def test_wrapped_without_meal_plan_skips_dining_hall_section(client):
     assert response.status_code == 200
     assert 'id="favDC"' not in page
     assert 'id="top3vendors"' in page
+
+
+def test_saves_uploads_when_debugging(client, tmp_path, monkeypatch):
+    monkeypatch.setattr("app.SAVE_UPLOADS_DIR", str(tmp_path))
+    pdf = make_history_pdf([swipe("WorcDC2", "March 4, 2024, 12:00PM")])
+    assert upload(client, pdf, b"not a pdf").status_code == 400
+
+    [folder] = tmp_path.iterdir()
+    assert (folder / "history-00.pdf").read_bytes() == pdf
+    assert (folder / "history-01.pdf").read_bytes() == b"not a pdf"
+    assert "readable PDF" in (folder / "error.txt").read_text()
+
+
+def test_saves_traceback_when_parsing_crashes(client, tmp_path, monkeypatch):
+    monkeypatch.setattr("app.SAVE_UPLOADS_DIR", str(tmp_path))
+    monkeypatch.setattr("app.build_wrapped", lambda tx: 1 / 0)
+    app.config["PROPAGATE_EXCEPTIONS"] = False
+    try:
+        response = upload(client, make_history_pdf([swipe("WorcDC2", "March 4, 2024, 12:00PM")]))
+    finally:
+        app.config["PROPAGATE_EXCEPTIONS"] = None
+    assert response.status_code == 500
+    [folder] = tmp_path.iterdir()
+    assert (folder / "history-00.pdf").exists()
+    assert "ZeroDivisionError" in (folder / "error.txt").read_text()
+
+
+def test_does_not_save_by_default(client, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    upload(client, make_history_pdf([swipe("WorcDC2", "March 4, 2024, 12:00PM")]))
+    assert list(tmp_path.iterdir()) == []

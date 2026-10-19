@@ -42,6 +42,10 @@ python -m pytest                      # tests
 python -m wrapped path/to/history.pdf # check what the parser makes of a real export
 ```
 
+To debug a run, set `WRAPPED_SAVE_UPLOADS` to a folder (e.g. `debug_uploads`). Every upload is then
+saved there before parsing, along with `error.txt` if it fails, so you can re-run it with
+`python -m wrapped debug_uploads/<run>/*.pdf`. Local use only: it stores people's history.
+
 When deployed behind a proxy, set `WRAPPED_PUBLIC_URL` (e.g. `https://wrapped.example.com`) so the
 bookmarklet points at the public address.
 

@@ -1,4 +1,6 @@
 import os
+import traceback
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
 
@@ -10,6 +12,9 @@ from wrapped import ParseError, build_wrapped, parse_pdfs
 GET_ORIGIN = "https://get.cbord.com"
 MAX_UPLOAD_MB = 25
 BOOKMARKLET_SOURCE = Path(__file__).parent / "static" / "scripts" / "bookmarklet.js"
+# Local debugging only: when set, every upload is saved here (plus a traceback if it crashes).
+# Never set this on a public deployment; it stores people's transaction history.
+SAVE_UPLOADS_DIR = os.environ.get("WRAPPED_SAVE_UPLOADS")
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
@@ -41,15 +46,32 @@ def import_from_get():
     return render_template("import.html", get_origin=GET_ORIGIN)
 
 
+def save_upload(pdfs):
+    """Save the PDFs before parsing, so they survive a crash. Returns the folder."""
+    folder = Path(SAVE_UPLOADS_DIR) / datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
+    folder.mkdir(parents=True)
+    for i, pdf in enumerate(pdfs):
+        (folder / f"history-{i:02d}.pdf").write_bytes(pdf)
+    app.logger.warning("Saved %d uploaded PDFs to %s", len(pdfs), folder)
+    return folder
+
+
 @app.post("/wrapped")
 def wrapped():
-    files = [f for f in request.files.getlist("pdfs") if f.filename]
-    if not files:
+    pdfs = [f.read() for f in request.files.getlist("pdfs") if f.filename]
+    if not pdfs:
         return render_home("Choose your transaction history PDF first.", 400)
+    saved_to = save_upload(pdfs) if SAVE_UPLOADS_DIR else None
     try:
-        result = build_wrapped(parse_pdfs(f.read() for f in files))
+        result = build_wrapped(parse_pdfs(pdfs))
     except ParseError as e:
+        if saved_to:
+            (saved_to / "error.txt").write_text(f"ParseError: {e}\n", encoding="utf-8")
         return render_home(str(e), 400)
+    except Exception:
+        if saved_to:
+            (saved_to / "error.txt").write_text(traceback.format_exc(), encoding="utf-8")
+        raise
     vendor_table_html = (
         result.vendors.rename(columns=str.title).rename_axis(None)
         .to_html(classes="data", formatters={"Spent": "${:.2f}".format})
