@@ -13,6 +13,14 @@ def test_reads_rows_from_pdf_and_skips_headers():
     assert rows_from_pdf(pdf) == rows
 
 
+def test_keeps_spaces_when_words_are_drawn_separately():
+    rows = [
+        swipe("HampDC2", "08/20/26 11:01:16 AM"),
+        charge("Blue Wall 1", "09/02/26 01:15:00 PM", 9.5),
+    ]
+    assert rows_from_pdf(make_history_pdf(rows, word_by_word=True)) == rows
+
+
 def test_rejects_files_that_are_not_pdfs():
     with pytest.raises(ParseError):
         parse_pdfs([b"definitely not a pdf"])

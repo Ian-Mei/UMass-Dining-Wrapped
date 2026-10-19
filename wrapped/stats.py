@@ -9,8 +9,6 @@ from .transactions import ParseError
 HALL_ORDER = ["Hamp", "Worcester", "Berk", "Frank"]
 LATE_NIGHT_HALLS = {"Worcester", "Berk"}
 GRAB_N_GO_HALLS = {"Worcester", "Frank"}
-# At Worcester and Frank, register 1 is the Grab 'n Go line.
-GRAB_N_GO_TERMINAL = "1"
 
 SWIPE_ROWS = ["Breakfast", "Lunch", "Dinner", "Late_Night", "GrabNGo", "Total"]
 
@@ -64,7 +62,7 @@ def semester_name(timestamps: pd.Series) -> tuple[str, str]:
 
 
 def swipe_column(visits: pd.DataFrame, late_night: bool, grab_n_go: bool) -> dict:
-    is_grab = visits["terminal"].eq(GRAB_N_GO_TERMINAL) if grab_n_go else pd.Series(False, index=visits.index)
+    is_grab = visits["grab_n_go"] if grab_n_go else pd.Series(False, index=visits.index)
     periods = visits.loc[~is_grab, "period"].value_counts()
     return {
         "Breakfast": int(periods.get("Breakfast", 0)),

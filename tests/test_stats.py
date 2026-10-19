@@ -36,6 +36,24 @@ def test_dining_hall_meal_periods():
     assert w.total_swipes == 8
 
 
+def test_dining_halls_under_2026_terminal_names():
+    # By Fall 2026 GET names terminals "CPOS Worcester DC" / "CPOS Worcester GG" (Grab 'n Go).
+    w = wrapped_from([
+        swipe("CPOS Worcester DC", "09/02/26 12:00:00 PM"),
+        swipe("CPOS Worcester DC", "09/02/26 10:00:00 PM"),
+        swipe("CPOS Worcester GG", "09/03/26 12:00:00 PM"),
+        swipe("CPOS Hampshire DC", "09/03/26 08:00:00 AM"),
+        swipe("CPOS Berkshire DC", "09/03/26 06:00:00 PM"),
+        swipe("CPOS Franklin GG", "09/04/26 01:00:00 PM"),
+    ])
+    assert w.swipes["Worcester"].to_dict() == {
+        "Breakfast": 0, "Lunch": 1, "Dinner": 0, "Late_Night": 1, "GrabNGo": 1, "Total": 3,
+    }
+    assert w.swipes.loc["GrabNGo", "Frank"] == 1
+    assert w.hall_ranking == [("Worcester", 3), ("Hamp", 1), ("Berk", 1), ("Frank", 1)]
+    assert w.total_swipes == 6
+
+
 def test_swipes_outside_dining_halls_get_their_own_column():
     w = wrapped_from([swipe("Roots Cafe 1", "March 4, 2024, 9:00AM")])
     assert w.swipes.loc["Total", "Roots Cafe"] == 1
