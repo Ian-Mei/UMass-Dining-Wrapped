@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Loading - UMass Dining Wrapped</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8" />
+    <link rel="icon" href="{{ url_for('static', filename='styles/imgs/UMassDiningWrapped.jpg') }}">
+    <style>
+      * { margin: 0; padding: 0; overflow: hidden; }
+      #status {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 2rem;
+        text-align: center;
+        color: white;
+        font: 20px "comic sans ms", sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="tv-screen"></canvas>
+    <p id="status">Waiting for GET&hellip;</p>
+    <form id="upload" method="post" action="{{ url_for('wrapped') }}" enctype="multipart/form-data" hidden>
+      <input type="file" name="pdfs" multiple>
+    </form>
+
+    <script src="{{ url_for('static', filename='scripts/loading.js') }}"></script>
+    <script>
+      const GET_ORIGIN = {{ get_origin|tojson }};
+      const statusEl = document.getElementById("status");
+      const form = document.getElementById("upload");
+
+      startLoadingScreen(document.getElementById("tv-screen"), {{ url_for('static', filename='imgs/umass.png')|tojson }});
+
+      window.addEventListener("message", (event) => {
+        // Only accept data from the GET tab that opened us.
+        if (event.origin !== GET_ORIGIN || event.source !== window.opener) return;
+        const message = event.data || {};
+
+        if (message.type === "progress") {
+          statusEl.textContent = `Downloading your history from GET (${message.done}/${message.total})`;
+        } else if (message.type === "error") {
+          statusEl.textContent = message.message;
+        } else if (message.type === "pdfs") {
+          statusEl.textContent = "Crunching the numbers…";
+          const files = new DataTransfer();
+          message.pdfs.forEach((pdf, i) => {
+            files.items.add(new File([pdf], `history-${i}.pdf`, { type: "application/pdf" }));
+          });
+          form.elements.pdfs.files = files.files;
+          form.submit();
+        }
+      });
+
+      if (window.opener) {
+        window.opener.postMessage({ type: "ready" }, GET_ORIGIN);
+      } else {
+        statusEl.innerHTML = 'This page opens from the bookmarklet. <a href="{{ url_for("home") }}" style="color:white">Go back</a>';
+      }
+    </script>
+  </body>
+</html>

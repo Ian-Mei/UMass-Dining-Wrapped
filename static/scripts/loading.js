@@ -1,33 +1,29 @@
+// Bouncing-logo loading screen (DVD screensaver style).
+// Usage: startLoadingScreen(canvasElement, logoUrl)
 let speed = 20;
 let scale = 0.17; // Image scale (I work on 1080p monitor)
-let canvas;
-let ctx;
-let logoColor;
 
-let dvd = {
-    x: 200,
-    y: 200,
-    xspeed: 10,
-    yspeed: 10,
-    img: new Image()
-};
-
-(function main(){
-    canvas = document.getElementById("tv-screen");
-    ctx = canvas.getContext("2d");
-    dvd.img.src = 'static/imgs/umass.png';
+function startLoadingScreen(canvas, logoSrc) {
+    const ctx = canvas.getContext("2d");
+    let logoColor = pickColor();
+    const dvd = {
+        x: 200,
+        y: 200,
+        xspeed: 10,
+        yspeed: 10,
+        img: new Image()
+    };
+    dvd.img.src = logoSrc;
     dvd.img.width = 800;
     dvd.img.height = 800;
-    //Draw the "tv screen"
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
 
-    pickColor();
-    update();
-})();
+    function resize() {
+        //Draw the "tv screen"
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
 
-function update() {
-    setTimeout(() => {
+    function update() {
         //Draw the canvas background
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -41,30 +37,33 @@ function update() {
         //Move the logo
         dvd.x+=dvd.xspeed;
         dvd.y+=dvd.yspeed;
-        //Check for collision 
+        //Check for collision
         checkHitBox();
-        update();   
-    }, speed)
-}
-
-//Check for border collision
-function checkHitBox(){
-    if(dvd.x+dvd.img.width*scale >= canvas.width || dvd.x <= 0){
-        dvd.xspeed *= -1;
-        pickColor();
+        setTimeout(update, speed);
     }
-        
-    if(dvd.y+dvd.img.height*scale >= canvas.height || dvd.y <= 0){
-        dvd.yspeed *= -1;
-        pickColor();
-    }    
+
+    //Check for border collision
+    function checkHitBox() {
+        if (dvd.x+dvd.img.width*scale >= canvas.width || dvd.x <= 0) {
+            dvd.xspeed *= -1;
+            logoColor = pickColor();
+        }
+
+        if (dvd.y+dvd.img.height*scale >= canvas.height || dvd.y <= 0) {
+            dvd.yspeed *= -1;
+            logoColor = pickColor();
+        }
+    }
+
+    resize();
+    window.addEventListener("resize", resize);
+    update();
 }
 
 //Pick a random color in RGB format
-function pickColor(){
-    r = Math.random() * (254 - 0) + 0;
-    g = Math.random() * (254 - 0) + 0;
-    b = Math.random() * (254 - 0) + 0;
-
-    logoColor = 'rgb('+r+','+g+', '+b+')';
+function pickColor() {
+    const r = Math.random() * 254;
+    const g = Math.random() * 254;
+    const b = Math.random() * 254;
+    return 'rgb('+r+','+g+', '+b+')';
 }
