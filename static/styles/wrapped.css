@@ -537,3 +537,215 @@ section .text-container .text-box li{
   background: #F8F8F8;
 }
 
+
+/* Highlight screens (routine, clock, calendar, fun facts, plan): one card per screen, sized to
+   fit a phone so each one can be screenshotted on its own. */
+section.stat {
+  position: relative;
+  overflow: hidden;
+  padding: 16px;
+}
+section.stat .container {
+  width: 100%;
+}
+section.stat h2.stat-intro {
+  color: white;
+  font-size: clamp(22px, 5vw, 40px);
+  margin-bottom: 4px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+}
+.statcard {
+  width: 100%;
+  max-width: 460px;
+  background: white;
+  color: #42455a;
+  overflow: hidden;
+}
+.statcard .listheader {
+  height: 90px;
+}
+.statcard .listheader .title {
+  font-size: clamp(26px, 7vw, 40px);
+}
+.statcard .statbody {
+  padding: 16px 20px 8px;
+  text-align: center;
+}
+.statcard .list {
+  padding-bottom: 8px;
+}
+.statcard .listitem {
+  padding: 8px 16px 8px 4px;
+}
+.statcard .listitem .itemname {
+  font-size: 17px;
+  grid-column: span 2;
+}
+.statcard .listitem .itemvalue {
+  font-size: 30px;
+}
+.statcard .headline {
+  font-size: clamp(22px, 6vw, 30px);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.statcard .big {
+  color: #35d8ac;
+  font-size: 84px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+.statcard .caption {
+  color: #979cb0;
+  font-size: 15px;
+  font-weight: 600;
+  margin: 2px 0 10px;
+  text-align: center;
+}
+.statcard .stamp {
+  background: #f5f6fa;
+  color: #979cb0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  padding: 8px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.statcard .tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.statcard .tile {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border-radius: 10px;
+  box-shadow: 0 5px 7px -1px rgba(51, 51, 51, 0.23);
+}
+.statcard .tilevalue {
+  color: #35d8ac;
+  font-size: 24px;
+  font-weight: 700;
+}
+.statcard .tilelabel {
+  color: #979cb0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Grid of colored squares: the clock (weekday x hour) and the calendar (weekday x week). */
+.heatmap {
+  display: grid;
+  grid-template-columns: 26px repeat(var(--cols), minmax(0, 1fr));
+  gap: 3px;
+  margin: 6px 0 8px;
+}
+.heatmap .axis {
+  color: #979cb0;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  align-self: center;
+  text-align: left;
+}
+.cell {
+  display: inline-block;
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: #eceef4;
+}
+.cell.l1 { background: #c6f3e6; }
+.cell.l2 { background: #86e3c8; }
+.cell.l3 { background: #35d8ac; }
+.cell.l4 { background: #168f6e; }
+.cell.out { background: transparent; }
+.cell.streak { box-shadow: inset 0 0 0 2px #f2c200; }
+.statcard .legend {
+  color: #979cb0;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  margin-bottom: 8px;
+}
+.legend .cell {
+  width: 11px;
+}
+
+.statcard .plan {
+  padding: 6px 0 10px;
+  border-bottom: 1px solid #eceef4;
+}
+.statcard .plan:last-child {
+  border-bottom: none;
+}
+.statcard .planlabel {
+  color: #979cb0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.statcard .planverdict {
+  font-size: clamp(22px, 6vw, 28px);
+  font-weight: 700;
+}
+.statcard .planverdict.out { color: #e5484d; }
+.statcard .planverdict.ok { color: #35d8ac; }
+.statcard .planverdict + .caption {
+  margin-bottom: 2px;
+}
+.statcard .planmeta {
+  color: #42455a;
+  font-size: 14px;
+  font-weight: 600;
+}
+.statcard .listitem .itemname small {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: .8;
+}
+
+/* Phones: keep every screen within the width of the screen so it can be screenshotted whole. */
+@media (max-width: 600px) {
+  section h2 {
+    font-size: 26px;
+    padding: 0 16px;
+  }
+  .listbox {
+    max-width: calc(100vw - 32px);
+    margin: 16px auto;
+  }
+  #personality .text-container {
+    margin: 0 16px;
+  }
+  #personality p {
+    width: auto;
+    padding: 20px;
+    font-size: 17px;
+  }
+  #personality .persImgcontainer {
+    width: 170px;
+    height: 250px;
+  }
+  #personality .persImg {
+    width: 160px;
+  }
+  /* The summary card is laid out at a fixed 500x500, so shrink it as a whole. */
+  #card .info-card .div {
+    zoom: 0.7;
+  }
+}
+@media (max-width: 370px) {
+  #card .info-card .div {
+    zoom: 0.62;
+  }
+}

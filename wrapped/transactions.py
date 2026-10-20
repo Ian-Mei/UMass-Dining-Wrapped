@@ -134,7 +134,7 @@ def parse_timestamp(text: str):
 def clean(rows: list[list[str]]) -> pd.DataFrame:
     """Normalize raw table rows into one row per charge.
 
-    Columns: timestamp, account, location, place, terminal, amount, is_swipe, kind, hall, grab_n_go
+    Columns: timestamp, account, location, place, terminal, amount, balance, is_swipe, kind, hall, grab_n_go
     """
     raw = pd.DataFrame(rows, columns=RAW_COLUMNS).astype(str)
     # History is downloaded in overlapping date windows, so the same row can show up twice.
@@ -150,6 +150,8 @@ def clean(rows: list[list[str]]) -> pd.DataFrame:
         "place": raw["location"].str.replace(r"[0-9]", "", regex=True).str.strip(),
         "terminal": raw["location"].str.extract(r"(\d+)\s*$", expand=False).fillna(""),
         "amount": pd.to_numeric(raw["amount"].str.replace(r"[^\d.]", "", regex=True), errors="coerce"),
+        # What was left on that account afterwards, in the same unit as amount.
+        "balance": pd.to_numeric(raw["balance"].str.replace(r"[^\d.-]", "", regex=True), errors="coerce"),
         # Meal-plan accounts report amounts in meals ("-1"), money accounts in dollars ("-$9.50").
         "is_swipe": ~raw["amount"].str.contains("$", regex=False),
     })

@@ -28,6 +28,7 @@ app.py                  Flask routes: / (home), /import (bookmarklet landing), /
 wrapped/
   transactions.py       PDF bytes → clean DataFrame of charges (PyMuPDF: table grid + words)
   stats.py              charges → Wrapped (dining halls, vendors, laundry, totals)
+  highlights.py         plan run-out pace, routine, streak calendar, dining clock, fun facts
   personality.py        personality rules
   __main__.py           python -m wrapped history.pdf  (print stats for a local PDF)
 templates/              home.html, import.html, wrapped.html
@@ -46,9 +47,13 @@ node --test tests/                    # bookmarklet date-window tests
 python -m wrapped path/to/history.pdf # check what the parser makes of a real export
 ```
 
-To debug a run, set `WRAPPED_SAVE_UPLOADS` to a folder (e.g. `debug_uploads`). Every upload is then
-saved there before parsing, along with `error.txt` if it fails, so you can re-run it with
+In debug mode every upload is saved to `debug_uploads` (or `WRAPPED_SAVE_UPLOADS`, which also works
+outside debug mode). Each one is saved there before parsing, along with `error.txt` if it fails, so you can re-run it with
 `python -m wrapped debug_uploads/<run>/*.pdf`. Local use only: it stores people's history.
+
+In debug mode (`flask --app app run --debug`), `/dev` lists the saved runs and `/dev/<run>` renders
+the results page for one, so you can work on the page without going through GET. These routes
+return 404 unless debug mode is on.
 
 When deployed behind a proxy, set `WRAPPED_PUBLIC_URL` (e.g. `https://wrapped.example.com`) so the
 bookmarklet points at the public address.

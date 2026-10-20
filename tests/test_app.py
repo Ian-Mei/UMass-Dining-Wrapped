@@ -114,3 +114,50 @@ def test_does_not_save_by_default(client, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     upload(client, make_history_pdf([swipe("WorcDC2", "March 4, 2024, 12:00PM")]))
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.fixture
+def saved_runs(client, tmp_path, monkeypatch):
+    monkeypatch.setattr("app.SAVE_UPLOADS_DIR", str(tmp_path))
+    run = tmp_path / "Friend One"
+    run.mkdir()
+    (run / "history-00.pdf").write_bytes(make_history_pdf([swipe("CPOS Worcester DC", "10/05/26 12:00:00 PM")]))
+    app.debug = True
+    yield tmp_path
+    app.debug = False
+
+
+def test_dev_pages_need_debug_mode(client, saved_runs):
+    app.debug = False
+    assert client.get("/dev").status_code == 404
+    assert client.get("/dev/Friend One").status_code == 404
+
+
+def test_dev_lists_saved_runs(client, saved_runs):
+    page = client.get("/dev").get_data(as_text=True)
+    assert "/dev/Friend%20One" in page
+
+
+def test_dev_renders_a_saved_run(client, saved_runs):
+    response = client.get("/dev/Friend One")
+    assert response.status_code == 200
+    assert "Fall 26 UMass Dining Wrapped" in response.get_data(as_text=True)
+
+
+def test_dev_only_reads_runs_inside_the_uploads_folder(client, saved_runs):
+    (saved_runs.parent / "outside").mkdir(exist_ok=True)
+    assert client.get("/dev/..").status_code == 404
+    assert client.get("/dev/../outside").status_code == 404
+    assert client.get("/dev/missing").status_code == 404
+
+
+def test_debug_mode_saves_to_debug_uploads_by_default(client, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("app.SAVE_UPLOADS_DIR", None)
+    app.debug = True
+    try:
+        upload(client, make_history_pdf([swipe("WorcDC2", "March 4, 2024, 12:00PM")]))
+    finally:
+        app.debug = False
+    [folder] = (tmp_path / "debug_uploads").iterdir()
+    assert (folder / "history-00.pdf").exists()

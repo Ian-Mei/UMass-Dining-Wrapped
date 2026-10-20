@@ -104,3 +104,12 @@ def test_personality_rules():
 def test_no_purchases_is_an_error():
     with pytest.raises(ParseError):
         wrapped_from([])
+
+
+def test_vendor_and_swipe_names_are_cleaned_up():
+    w = wrapped_from([
+        charge("CPOS ISB CafÃ©", "10/05/26 12:00:00 PM", 4.75),
+        swipe("CPOS Roots Cafe", "10/06/26 09:00:00 AM"),
+    ])
+    assert w.vendors.index.tolist() == ["ISB Café"]
+    assert w.swipes.loc["Total", "Roots Cafe"] == 1

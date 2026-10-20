@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from .highlights import Highlights, build_highlights, display_name
 from .personality import Personality, pick_personality
 from .transactions import ParseError
 
@@ -38,6 +39,7 @@ class Wrapped:
     total_swipes: int
     total_spent: float
     laundry: Laundry | None
+    highlights: Highlights
     personality: Personality
 
     @property
@@ -75,6 +77,10 @@ def swipe_column(visits: pd.DataFrame, late_night: bool, grab_n_go: bool) -> dic
     }
 
 
+def vendor_name(place: str) -> str:
+    return display_name(place, None, False)
+
+
 def swipe_table(tx: pd.DataFrame) -> pd.DataFrame:
     halls = tx[tx["kind"] == "hall"]
     columns = {
@@ -83,7 +89,7 @@ def swipe_table(tx: pd.DataFrame) -> pd.DataFrame:
     }
     # Meal swipes used somewhere other than a dining hall (e.g. a cafe meal exchange).
     other = tx[(tx["kind"] == "vendor") & tx["is_swipe"]]
-    for place, visits in other.groupby("place", sort=False):
+    for place, visits in other.groupby(other["place"].map(vendor_name), sort=False):
         columns[place] = swipe_column(visits, late_night=False, grab_n_go=False)
     # Build object columns one at a time so pandas keeps ints and None instead of floats and NaN.
     return pd.DataFrame({name: pd.Series(col, dtype=object) for name, col in columns.items()}, index=SWIPE_ROWS)
@@ -94,7 +100,7 @@ def vendor_table(tx: pd.DataFrame) -> pd.DataFrame:
     columns = ["breakfast", "lunch", "dinner", "visits", "spent"]
     if paid.empty:
         return pd.DataFrame(columns=columns)
-    grouped = paid.groupby("place")
+    grouped = paid.groupby(paid["place"].map(vendor_name))
     table = pd.DataFrame({
         "breakfast": grouped["period"].agg(lambda p: int((p == "Breakfast").sum())),
         "lunch": grouped["period"].agg(lambda p: int((p == "Lunch").sum())),
@@ -142,6 +148,7 @@ def build_wrapped(tx: pd.DataFrame) -> Wrapped:
         total_swipes=int(swipes.loc["Total"].sum()),
         total_spent=float(vendors["spent"].sum() + hall_dollars),
         laundry=laundry_stats(tx),
+        highlights=build_highlights(tx, semester),
         personality=None,
     )
     wrapped.personality = pick_personality(wrapped)
