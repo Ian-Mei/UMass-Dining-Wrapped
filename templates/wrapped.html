@@ -74,6 +74,87 @@
         </section>
         {% endif %}
 
+        {% if h.blue_wall %}
+        {% set bw = h.blue_wall %}
+        <section id="bluewall" class="stat bluewall">
+          <div class="container reveal">
+            <h2 class="stat-intro">Your #1 at Blue Wall was&hellip;</h2>
+            <div class="listbox statcard">
+              <div class="listheader"><h1 class="title">{{ bw.top.name }}</h1></div>
+              <div class="statbody">
+                <p class="big">{{ bw.top.swipes }}</p>
+                <p class="caption">meal swipe{{ "s" if bw.top.swipes != 1 }} this semester</p>
+                <p class="remark">{{ bw.remark }}</p>
+              </div>
+              <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="bluewallchart" class="stat bluewall deep">
+          <div class="container reveal">
+            <h2 class="stat-intro">Your Blue Wall chart</h2>
+            <div class="listbox statcard">
+              <div class="listheader"><h1 class="title">{{ bw.total }} Swipe{{ "s" if bw.total != 1 }}</h1></div>
+              <div class="statbody">
+                {% for spot in bw.spots %}
+                <div class="barrow">
+                  <span>{{ spot.name }}</span>
+                  <span class="bar" style="width: {{ (spot.share * 100)|round(1) }}%"></span>
+                  <b>{{ spot.swipes }}</b>
+                </div>
+                {% endfor %}
+                <p class="caption">{{ bw.tried }} of {{ bw.of }} Blue Wall spots tried</p>
+              </div>
+              <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
+            </div>
+          </div>
+        </section>
+        {% endif %}
+
+        {% if h.harvest %}
+        <section id="harvest" class="stat harvest">
+          <div class="container reveal">
+            <h2 class="stat-intro">Not Blue Wall, but&hellip;</h2>
+            <div class="listbox statcard">
+              <div class="listheader"><h1 class="title">Harvest Market</h1></div>
+              <div class="statbody">
+                <p class="big">{{ h.harvest.swipes }}</p>
+                <p class="caption">meal swipes at Harvest Market</p>
+                <p class="remark">{{ h.harvest.remark }}</p>
+              </div>
+              <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
+            </div>
+          </div>
+        </section>
+        {% endif %}
+
+        {% if h.top_ups %}
+        {% set t = h.top_ups %}
+        <section id="topups" class="stat">
+          <img src="{{ url_for('static', filename='styles/imgs/background2.png') }}" class="background">
+          <div class="container reveal">
+            <h2 class="stat-intro">When a swipe wasn't enough</h2>
+            <div class="listbox statcard">
+              <div class="listheader"><h1 class="title">Top-Ups</h1></div>
+              <div class="statbody">
+                <p class="big">{{ t.count }}</p>
+                <p class="caption">times you added dining dollars to a meal swipe, ${{ "%.2f"|format(t.total) }} extra</p>
+              </div>
+              <div class="list">
+                {% for p in t.places %}
+                <div class="listitem">
+                  <span class="itemname">{{ p.name }}<small>${{ "%.2f"|format(p.average) }} average top-up</small></span>
+                  <span class="itemvalue">{{ p.count }}<span>Time{{ "s" if p.count != 1 }}</span></span>
+                </div>
+                {% endfor %}
+              </div>
+              <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
+            </div>
+          </div>
+        </section>
+        {% endif %}
+
         {% if not w.vendors.empty %}
         <section id="top3vendors" class="stat">
           <img src="{{ url_for('static', filename='styles/imgs/background3.png') }}" class="background">

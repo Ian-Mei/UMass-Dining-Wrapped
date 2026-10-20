@@ -3,7 +3,7 @@ from datetime import date, time
 import pytest
 
 from wrapped import build_wrapped
-from wrapped.highlights import display_name
+from wrapped.highlights import blue_wall_name, display_name
 from wrapped.transactions import clean
 
 
@@ -152,3 +152,76 @@ def test_plan_that_would_last_for_centuries():
     [plan] = highlights(rows).plans
     assert plan.runs_out is None
     assert plan.left_at_end > 0
+
+
+@pytest.mark.parametrize("name, expected", [
+    ("Tamales", "Tamales"),
+    ("Yum Bakery", "Yum! Bakery"),
+    ("People's Organic Coffee", "People's Organic Coffee"),
+    ("Peoples Organic Coffee", "People's Organic Coffee"),
+    ("Paciugo Gelato", "Paciugo"),
+    ("Harvest Market", None),
+    ("Peet's Coffee & Tea", None),
+    ("Worcester", None),
+])
+def test_blue_wall_names(name, expected):
+    assert blue_wall_name(name) == expected
+
+
+def ycmp(location, when):
+    return meal(location, when, account="T YCMP Commuter 155", balance="100")
+
+
+def test_blue_wall_recap():
+    rows = [ycmp("CPOS Tamales", f"10/0{d}/26 12:00:00 PM") for d in (1, 2, 3)]
+    rows += [ycmp("CPOS Green Fields", f"10/0{d}/26 06:00:00 PM") for d in (4, 5, 6)]  # tie, but more recent
+    rows += [ycmp("CPOS Wasabi", "10/07/26 01:00:00 PM")]
+    rows += [ycmp("CPOS Harvest Market", f"10/0{d}/26 01:30:00 PM") for d in (1, 2)]   # not Blue Wall
+    rows += [dollars("CPOS Tamales", "10/08/26 12:00:00 PM", 9.5, 80)]                 # dollars, not a swipe
+    bw = highlights(rows).blue_wall
+    assert bw.total == 7
+    assert [(s.name, s.swipes) for s in bw.spots] == [("Green Fields", 3), ("Tamales", 3), ("Wasabi", 1)]
+    assert bw.top.name == "Green Fields"
+    assert "3" in bw.remark
+    assert (bw.tried, bw.of) == (3, 9)
+    assert bw.spots[0].share == 1 and bw.spots[2].share == pytest.approx(1 / 3)
+
+
+def test_no_blue_wall_recap_under_three_swipes():
+    rows = [ycmp("CPOS Tamales", "10/01/26 12:00:00 PM"), ycmp("CPOS Wasabi", "10/02/26 12:00:00 PM")]
+    assert highlights(rows).blue_wall is None
+
+
+def test_remarks_handle_one_swipe():
+    rows = [ycmp(f"CPOS {place}", f"10/0{d}/26 12:00:00 PM") for d, place in [(1, "Tavola"), (2, "Tamales"), (3, "Wasabi")]]
+    remark = highlights(rows).blue_wall.remark
+    assert "1 " in remark and "1 swipes" not in remark
+
+
+def test_harvest_market_card_from_five_swipes():
+    five = [ycmp("CPOS Harvest Market", f"10/0{d}/26 12:00:00 PM") for d in range(1, 6)]
+    harvest = highlights(five).harvest
+    assert harvest.swipes == 5
+    assert "5" in harvest.remark
+    assert highlights(five[:4]).harvest is None
+
+
+def test_top_ups():
+    rows = []
+    for d in range(1, 6):  # five Harvest Market top-ups: $4, $5, $6, $7, $8
+        rows += [ycmp("CPOS Harvest Market", f"10/0{d}/26 12:00:00 PM"),
+                 dollars("CPOS Harvest Market", f"10/0{d}/26 12:00:09 PM", 3 + d, 100 - d)]
+    rows += [ycmp("CPOS Tamales", "10/07/26 01:00:00 PM"), dollars("CPOS Tamales", "10/07/26 01:00:05 PM", 1.25, 50)]
+    rows += [ycmp("CPOS Wasabi", "10/08/26 01:00:00 PM"), dollars("CPOS Wasabi", "10/08/26 01:00:05 PM", 2, 48)]
+    rows += [ycmp("CPOS Deli Delish", "10/09/26 01:00:00 PM"), dollars("CPOS Deli Delish", "10/09/26 01:00:05 PM", 3, 45)]
+    rows += [dollars("CPOS Tavola", "10/09/26 06:00:00 PM", 10, 35)]  # bought on its own
+    t = highlights(rows).top_ups
+    assert t.count == 8
+    assert t.total == pytest.approx(36.25)
+    assert [(p.name, p.count) for p in t.places] == [("Harvest Market", 5), ("Deli Delish", 1), ("Wasabi", 1)]
+    assert t.places[0].average == pytest.approx(6.00)
+
+
+def test_no_top_up_screen_under_three():
+    rows = [ycmp("CPOS Tamales", "10/07/26 01:00:00 PM"), dollars("CPOS Tamales", "10/07/26 01:00:05 PM", 1.25, 50)]
+    assert highlights(rows).top_ups is None

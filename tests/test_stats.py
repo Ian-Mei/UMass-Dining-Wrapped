@@ -113,3 +113,14 @@ def test_vendor_and_swipe_names_are_cleaned_up():
     ])
     assert w.vendors.index.tolist() == ["ISB Café"]
     assert w.swipes.loc["Total", "Roots Cafe"] == 1
+
+
+def test_top_ups_leave_top_spots_but_count_toward_total_spent():
+    w = wrapped_from([
+        swipe("CPOS Harvest Market", "10/05/26 12:00:00 PM", account="T YCMP Commuter 155"),
+        charge("CPOS Harvest Market", "10/05/26 12:00:08 PM", 4.50),  # topped up the swipe
+        charge("CPOS Harvest Market", "10/06/26 03:00:00 PM", 6.00),  # bought on its own
+    ])
+    assert w.vendors.loc["Harvest Market", "visits"] == 1
+    assert w.vendors.loc["Harvest Market", "spent"] == pytest.approx(6.00)
+    assert w.total_spent == pytest.approx(10.50)

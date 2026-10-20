@@ -35,6 +35,9 @@ OLD_GRAB_N_GO_HALLS = {"Worcester", "Frank"}
 # By Fall 2026 they're "CPOS Worcester DC", with Grab 'n Go as its own "CPOS Worcester GG".
 NEW_HALL_TERMINAL = r"^CPOS (Hampshire|Worcester|Berkshire|Franklin) (DC|GG)$"
 NEW_DINING_HALLS = {"Hampshire": "Hamp", "Worcester": "Worcester", "Berkshire": "Berk", "Franklin": "Frank"}
+# Dining dollars paid at a vendor this soon after a meal swipe there topped up the swipe
+# (the order cost more than a swipe covers). In real exports it's almost always within 15s.
+TOP_UP_SECONDS = 60
 
 
 class ParseError(ValueError):
@@ -145,7 +148,8 @@ def parse_timestamp(text: str):
 def clean(rows: list[list[str]]) -> pd.DataFrame:
     """Normalize raw table rows into one row per charge.
 
-    Columns: timestamp, account, location, place, terminal, amount, balance, is_swipe, kind, hall, grab_n_go
+    Columns: timestamp, account, location, place, terminal, amount, balance, is_swipe, kind, hall, grab_n_go,
+    is_top_up
     """
     raw = pd.DataFrame(rows, columns=RAW_COLUMNS).astype(str)
     raw = raw[~raw["location"].str.contains(NOT_SPENDING, regex=True)]
@@ -172,4 +176,22 @@ def clean(rows: list[list[str]]) -> pd.DataFrame:
     tx.loc[tx["hall"].notna(), "kind"] = "hall"
     tx.loc[tx["place"].str.contains("WASHER|DRYER"), "kind"] = "laundry"
     tx.loc[tx["place"].str.contains("PRNT"), "kind"] = "printing"
-    return tx.sort_values("timestamp").reset_index(drop=True)
+    tx = tx.sort_values("timestamp").reset_index(drop=True)
+    tx["is_top_up"] = top_ups(tx)
+    return tx
+
+
+def top_ups(tx: pd.DataFrame) -> pd.Series:
+    """Which rows are dining dollars paid at a vendor within TOP_UP_SECONDS of a meal swipe there."""
+    vendor = tx["kind"] == "vendor"
+    paid = tx.loc[vendor & ~tx["is_swipe"], ["timestamp", "place"]].reset_index()
+    swipes = tx.loc[vendor & tx["is_swipe"], ["timestamp", "place"]].rename(columns={"timestamp": "swipe_time"})
+    if paid.empty or swipes.empty:
+        return pd.Series(False, index=tx.index)
+    nearest = pd.merge_asof(
+        paid, swipes, left_on="timestamp", right_on="swipe_time", by="place",
+        tolerance=pd.Timedelta(seconds=TOP_UP_SECONDS), direction="nearest",
+    )
+    is_top_up = pd.Series(False, index=tx.index)
+    is_top_up[nearest.loc[nearest["swipe_time"].notna(), "index"]] = True
+    return is_top_up

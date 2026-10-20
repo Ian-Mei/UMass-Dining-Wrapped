@@ -85,3 +85,17 @@ def test_count_rows_matches_the_parser():
     rows = [swipe("CPOS Worcester DC", f"09/{d:02d}/26 12:00:00 PM") for d in range(1, 18)]
     pdf = make_history_pdf(rows, word_by_word=True)
     assert count_rows(pdf) == len(rows_from_pdf(pdf)) == 17
+
+
+def test_marks_dining_dollar_top_ups_on_a_swipe():
+    tx = clean([
+        swipe("CPOS Tamales 1", "10/05/26 12:00:00 PM"),
+        charge("CPOS Tamales 2", "10/05/26 12:00:45 PM", 2.50),  # same place, 45s later
+        charge("CPOS Tamales 1", "10/05/26 12:02:30 PM", 3.00),  # 2.5 minutes later
+        charge("CPOS Wasabi 1", "10/05/26 12:00:10 PM", 9.00),   # different place
+        swipe("CPOS Worcester DC", "10/06/26 06:00:00 PM"),
+        charge("CPOS Worcester DC", "10/06/26 06:00:05 PM", 1.00),  # dining halls don't count
+    ])
+    top_ups = tx.loc[tx["is_top_up"], ["location", "amount"]].values.tolist()
+    assert top_ups == [["CPOS Tamales 2", 2.50]]
+    assert not tx.loc[tx["is_swipe"], "is_top_up"].any()
