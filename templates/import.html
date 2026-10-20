@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Loading - UMass Dining Wrapped</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8" />
+    <link rel="icon" href="{{ url_for('static', filename='styles/imgs/UMassDiningWrapped.jpg') }}">
+    <style>
+      * { margin: 0; padding: 0; overflow: hidden; }
+      #status {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 2rem;
+        text-align: center;
+        color: white;
+        font: 20px "comic sans ms", sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="tv-screen"></canvas>
+    <p id="status">Waiting for GET&hellip;</p>
+    <form id="upload" method="post" action="{{ url_for('wrapped') }}" enctype="multipart/form-data" hidden>
+      <input type="file" name="pdfs" multiple>
+    </form>
+
+    <script src="{{ url_for('static', filename='scripts/loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/history_windows.js') }}"></script>
+    <script>
+      const GET_ORIGIN = {{ get_origin|tojson }};
+      const ROWS_URL = {{ url_for('rows')|tojson }};
+      const DELAY_MS = 250;
+      // The GET tab acknowledges each request straight away; no answer at all means an outdated
+      // bookmark (from before it fetched what this page asks for).
+      const ACK_TIMEOUT_MS = 10000;
+      // After that, allow for the bookmarklet's 3 attempts of up to 20s each, plus backoff.
+      const REPLY_TIMEOUT_MS = 90000;
+      const statusEl = document.getElementById("status");
+      const form = document.getElementById("upload");
+
+      startLoadingScreen(document.getElementById("tv-screen"), {{ url_for('static', filename='imgs/umass.png')|tojson }});
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const pending = new Map();
+      let nextId = 0;
+
+      window.addEventListener("message", (event) => {
+        // Only accept data from the GET tab that opened us.
+        if (event.origin !== GET_ORIGIN || event.source !== window.opener) return;
+        const { type, id, pdf, message } = event.data || {};
+        const request = pending.get(id);
+        if (!request) return;
+        if (type === "ack") {
+          request.wait(REPLY_TIMEOUT_MS, "GET is taking too long to respond. Give it a minute and click the bookmark again.");
+          return;
+        }
+        request.wait(null);
+        pending.delete(id);
+        if (type === "pdf") request.resolve(pdf);
+        else request.reject(new Error(message || "Couldn't download your history from GET."));
+      });
+
+      // Ask the GET tab to download one date window.
+      const download = (w) => new Promise((resolve, reject) => {
+        const id = nextId++;
+        let timer;
+        // (Re)start the deadline for this request; null just clears it.
+        const wait = (ms, message) => {
+          clearTimeout(timer);
+          if (ms === null) return;
+          timer = setTimeout(() => {
+            pending.delete(id);
+            reject(new Error(message));
+          }, ms);
+        };
+        pending.set(id, { resolve, reject, wait });
+        wait(ACK_TIMEOUT_MS, "The GET tab isn't answering. Keep it open, drag the newest Dining Wrapped button from the home page to your bookmarks, and try again.");
+        window.opener.postMessage({ type: "fetch", id, start: HistoryWindows.fmt(w.start), end: HistoryWindows.fmt(w.end) }, GET_ORIGIN);
+      });
+
+      const isFull = async (pdf) => {
+        const res = await fetch(ROWS_URL, { method: "POST", body: pdf });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error);
+        return body.full;
+      };
+
+      const run = async () => {
+        const queue = HistoryWindows.initial(new Date());
+        const pdfs = [];
+        let done = 0;
+        while (queue.length) {
+          statusEl.textContent = `Downloading your history from GET (${done}/${done + queue.length})`;
+          const w = queue.shift();
+          const pdf = await download(w);
+          // A full window may be missing its oldest rows, so fetch it again in halves.
+          if (HistoryWindows.canSplit(w) && await isFull(pdf)) queue.unshift(...HistoryWindows.split(w));
+          else pdfs.push(pdf);
+          done++;
+          await sleep(DELAY_MS);
+        }
+
+        statusEl.textContent = "Crunching the numbers…";
+        const files = new DataTransfer();
+        pdfs.forEach((pdf, i) => {
+          files.items.add(new File([pdf], `history-${i}.pdf`, { type: "application/pdf" }));
+        });
+        form.elements.pdfs.files = files.files;
+        form.submit();
+      };
+
+      if (window.opener) {
+        run().catch((err) => { statusEl.textContent = err.message; });
+      } else {
+        statusEl.innerHTML = 'This page opens from the bookmarklet. <a href="{{ url_for("home") }}" style="color:white">Go back</a>';
+      }
+    </script>
+  </body>
+</html>

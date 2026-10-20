@@ -1,0 +1,5 @@
+Flask>=3.0
+waitress>=3.0
+pandas>=2.1
+# The parser uses page.get_drawings() and get_text("words"); tested with 2.0
+PyMuPDF>=1.23

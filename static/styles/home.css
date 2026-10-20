@@ -560,3 +560,52 @@
     justify-content: space-between;
   }
 }
+
+/* Getting-your-data instructions and upload form */
+.home-howto {
+  margin-top: var(--dl-space-space-twounits);
+  text-align: left;
+  max-width: 640px;
+  width: 100%;
+  color: var(--dl-color-gray-white);
+  font-size: 1.1rem;
+}
+.home-howto h2 {
+  margin-bottom: var(--dl-space-space-unit);
+  font-size: 1.75rem;
+}
+.home-howto ol {
+  padding-left: 1.5rem;
+  line-height: 1.6;
+}
+.home-howto li + li {
+  margin-top: var(--dl-space-space-halfunit);
+}
+.home-howto a:not(.button) {
+  text-decoration: underline;
+}
+.home-howto p {
+  margin-bottom: var(--dl-space-space-unit);
+  line-height: 1.5;
+}
+.home-howto .home-btn-group {
+  flex-wrap: wrap;
+}
+.home-bookmarklet {
+  display: inline-block;
+  margin: var(--dl-space-space-halfunit) 0;
+  cursor: grab;
+}
+.home-error {
+  margin-top: var(--dl-space-space-unit);
+  padding: var(--dl-space-space-unit);
+  border-radius: 8px;
+  background-color: #fde8e8;
+  color: #8a1c1c;
+  max-width: 640px;
+}
+.home-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
