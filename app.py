@@ -6,15 +6,13 @@ from urllib.parse import quote
 
 from flask import Flask, abort, jsonify, render_template, render_template_string, request
 from waitress import serve
+from werkzeug.middleware.proxy_fix import ProxyFix
 
-from wrapped import ParseError, build_wrapped, parse_pdfs
-from wrapped.transactions import count_rows
+from wrapped import ParseError, build_wrapped
+from wrapped.transactions import MAYBE_CUT_OFF_ROWS, clean, count_rows, merge_rows, rows_from_pdf, transaction_count
 
 GET_ORIGIN = "https://get.cbord.com"
 MAX_UPLOAD_MB = 25
-# GET silently returns only the newest page of rows (17 when we checked) per history PDF, so a
-# date window this full may be missing its oldest rows and gets downloaded again in halves.
-WINDOW_FULL_ROWS = 15
 BOOKMARKLET_SOURCE = Path(__file__).parent / "static" / "scripts" / "bookmarklet.js"
 # Local debugging only: when set, every upload is saved here (plus a traceback if it crashes).
 # Never set this on a public deployment; it stores people's transaction history.
@@ -24,6 +22,9 @@ DEBUG_UPLOADS_DIR = "debug_uploads"
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
+# Behind a proxy (Render, Fly, nginx), use the https:// address it forwards, so the bookmarklet's
+# origin check matches the page it opens.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 
 @app.template_filter()
@@ -44,13 +45,23 @@ def hour_label(hour):
 
 
 def public_origin():
-    # Set WRAPPED_PUBLIC_URL when running behind a proxy so the bookmarklet points at the right host.
+    # WRAPPED_PUBLIC_URL overrides the address the request came in on (e.g. if the proxy
+    # doesn't send X-Forwarded-Proto / X-Forwarded-Host).
     return os.environ.get("WRAPPED_PUBLIC_URL", request.host_url).rstrip("/")
 
 
-def bookmarklet_href():
+def load_bookmarklet():
+    """bookmarklet.js squeezed onto one line, still with the __APP_ORIGIN__ placeholder."""
     lines = BOOKMARKLET_SOURCE.read_text(encoding="utf-8").splitlines()
-    code = " ".join(line.strip() for line in lines if line.strip() and not line.strip().startswith("//"))
+    return " ".join(line.strip() for line in lines if line.strip() and not line.strip().startswith("//"))
+
+
+BOOKMARKLET_CODE = load_bookmarklet()
+
+
+def bookmarklet_href():
+    # In debug mode, re-read the file so edits show up without a restart.
+    code = load_bookmarklet() if app.debug else BOOKMARKLET_CODE
     return "javascript:" + quote(code.replace("__APP_ORIGIN__", public_origin()), safe="")
 
 
@@ -76,7 +87,8 @@ def rows():
         n = count_rows(request.get_data())
     except ParseError as e:
         return jsonify(error=str(e)), 400
-    return jsonify(rows=n, full=n >= WINDOW_FULL_ROWS)
+    # A full window gets downloaded again in halves.
+    return jsonify(rows=n, full=n >= MAYBE_CUT_OFF_ROWS)
 
 
 def uploads_dir():
@@ -101,7 +113,7 @@ def wrapped():
         return render_home("Choose your transaction history PDF first.", 400)
     saved_to = save_upload(pdfs) if uploads_dir() else None
     try:
-        result = build_wrapped(parse_pdfs(pdfs))
+        result, maybe_cut_off = build_from_pdfs(pdfs)
     except ParseError as e:
         if saved_to:
             (saved_to / "error.txt").write_text(f"ParseError: {e}\n", encoding="utf-8")
@@ -110,15 +122,22 @@ def wrapped():
         if saved_to:
             (saved_to / "error.txt").write_text(traceback.format_exc(), encoding="utf-8")
         raise
-    return render_wrapped(result)
+    return render_wrapped(result, maybe_cut_off)
 
 
-def render_wrapped(result):
+def build_from_pdfs(pdfs):
+    """The Wrapped for these PDFs, and whether any of them may have been cut off by GET."""
+    per_pdf = [rows_from_pdf(pdf) for pdf in pdfs]
+    result = build_wrapped(clean(merge_rows(per_pdf)))
+    return result, any(transaction_count(rows) >= MAYBE_CUT_OFF_ROWS for rows in per_pdf)
+
+
+def render_wrapped(result, maybe_cut_off=False):
     vendor_table_html = (
         result.vendors.rename(columns=str.title).rename_axis(None)
         .to_html(classes="data", formatters={"Spent": "${:.2f}".format})
     )
-    return render_template("wrapped.html", w=result, vendor_table_html=vendor_table_html)
+    return render_template("wrapped.html", w=result, vendor_table_html=vendor_table_html, maybe_cut_off=maybe_cut_off)
 
 
 # Dev only (flask --app app run --debug): re-render saved uploads without going through GET.
@@ -147,8 +166,7 @@ def dev_run(run):
     run_dir = (folder / run).resolve()
     if run_dir.parent != folder or not run_dir.is_dir():
         abort(404)
-    result = build_wrapped(parse_pdfs([p.read_bytes() for p in sorted(run_dir.glob("*.pdf"))]))
-    return render_wrapped(result)
+    return render_wrapped(*build_from_pdfs([p.read_bytes() for p in sorted(run_dir.glob("*.pdf"))]))
 
 
 @app.errorhandler(413)

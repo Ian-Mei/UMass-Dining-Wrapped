@@ -55,8 +55,9 @@ In debug mode (`flask --app app run --debug`), `/dev` lists the saved runs and `
 the results page for one, so you can work on the page without going through GET. These routes
 return 404 unless debug mode is on.
 
-When deployed behind a proxy, set `WRAPPED_PUBLIC_URL` (e.g. `https://wrapped.example.com`) so the
-bookmarklet points at the public address.
+Behind a proxy, the app uses the public address from the proxy's `X-Forwarded-Proto` and
+`X-Forwarded-Host` headers, so the bookmarklet points at it. If the proxy doesn't send those, set
+`WRAPPED_PUBLIC_URL` (e.g. `https://wrapped.example.com`).
 
 ## Notes
 

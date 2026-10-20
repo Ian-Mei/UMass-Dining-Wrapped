@@ -139,3 +139,16 @@ def test_fun_facts():
     assert fun.busiest_day == date(2026, 10, 5)
     assert fun.busiest_day_count == 3
     assert fun.busiest_day_places == ["Worcester", "Worcester Grab 'n Go"]
+
+
+def test_plans_without_spending_do_not_crash():
+    # Charges that parse to $0 but a balance that still went down.
+    rows = [["UMass Dining Dollars", f"09/0{d}/26 12:00:00 PM", "CPOS Wasabi", "-$0.00", f"${100 - d}.00"] for d in range(1, 7)]
+    assert highlights(rows).plans == []
+
+
+def test_plan_that_would_last_for_centuries():
+    rows = [dollars("CPOS Wasabi", f"09/0{d}/26 12:00:00 PM", 0.01, 1e9 - d / 100) for d in range(1, 7)]
+    [plan] = highlights(rows).plans
+    assert plan.runs_out is None
+    assert plan.left_at_end > 0

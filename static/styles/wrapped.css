@@ -749,3 +749,15 @@ section.stat h2.stat-intro {
     zoom: 0.62;
   }
 }
+
+/* Shown when an uploaded PDF looks cut off by GET's 17-row limit. */
+section#home .notice {
+  max-width: 460px;
+  margin: 0 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, .55);
+  color: white;
+  font-size: 16px;
+  text-align: center;
+}

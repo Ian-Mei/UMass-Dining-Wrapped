@@ -14,6 +14,11 @@
           <img src="{{ url_for('static', filename='styles/imgs/background1.png') }}" class="background">
           <div class="container reveal">
             <h1>Welcome to {{ w.semester_short }} UMass Dining Wrapped &#8595;</h1>
+            {% if maybe_cut_off %}
+            <p class="notice">Heads up: GET only sends its newest 17 transactions per download, and one of your
+              files hit that limit, so some older purchases may be missing. For your full history, use the
+              Dining Wrapped bookmark on the home page.</p>
+            {% endif %}
           </div>
         </section>
 

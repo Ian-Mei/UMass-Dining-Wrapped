@@ -50,7 +50,6 @@ def test_unknown_timestamp_is_none():
 def test_clean_keeps_only_spending_and_classifies_it():
     tx = clean([
         swipe("WorcDC1", "12/13/23 12:00:00 PM"),
-        swipe("WorcDC1", "12/13/23 12:00:00 PM"),  # duplicate from overlapping downloads
         charge("The Grill 2", "12/13/23 06:49:03 PM", 19.50),
         ["Student Debit Plan", "12/13/23 01:41:00 PM", "X - OAK DRYER 10", "-$1.40", "$5.80"],
         ["Student Debit Plan", "12/05/23 08:28:20 AM", "GET FUNDS DEPOSITS", "+$10.00", "$10.00"],
@@ -65,3 +64,24 @@ def test_clean_keeps_only_spending_and_classifies_it():
     assert tx["terminal"].tolist() == ["1", "10", "2"]
     assert tx["is_swipe"].tolist() == [True, False, False]
     assert tx["amount"].tolist() == [1.0, 1.4, 19.5]
+
+
+def test_overlapping_pdfs_count_a_transaction_once():
+    shared = swipe("WorcDC1", "12/13/23 12:00:00 PM")
+    first = make_history_pdf([swipe("HampDC2", "12/12/23 08:00:00 AM"), shared])
+    second = make_history_pdf([shared, swipe("BerkDC1", "12/14/23 06:00:00 PM")])
+    assert parse_pdfs([first, second])["location"].tolist() == ["HampDC2", "WorcDC1", "BerkDC1"]
+
+
+def test_identical_rows_in_one_pdf_are_separate_purchases():
+    # Unlimited plans never change the balance and old exports only go to the minute,
+    # so two swipes at once (bringing a friend) look identical.
+    twice = swipe("WorcDC2", "March 4, 2024, 12:21PM")
+    tx = parse_pdfs([make_history_pdf([twice, twice]), make_history_pdf([twice, twice])])
+    assert len(tx) == 2
+
+
+def test_count_rows_matches_the_parser():
+    rows = [swipe("CPOS Worcester DC", f"09/{d:02d}/26 12:00:00 PM") for d in range(1, 18)]
+    pdf = make_history_pdf(rows, word_by_word=True)
+    assert count_rows(pdf) == len(rows_from_pdf(pdf)) == 17

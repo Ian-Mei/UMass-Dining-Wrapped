@@ -161,3 +161,17 @@ def test_debug_mode_saves_to_debug_uploads_by_default(client, tmp_path, monkeypa
         app.debug = False
     [folder] = (tmp_path / "debug_uploads").iterdir()
     assert (folder / "history-00.pdf").exists()
+
+
+def test_warns_when_a_pdf_may_be_cut_off(client):
+    full = [swipe("CPOS Worcester DC", f"09/{d:02d}/26 12:00:00 PM") for d in range(1, 18)]
+    page = upload(client, make_history_pdf(full)).get_data(as_text=True)
+    assert "may be missing" in page
+
+    page = upload(client, make_history_pdf(full[:5])).get_data(as_text=True)
+    assert "may be missing" not in page
+
+
+def test_bookmarklet_uses_the_public_address_behind_a_proxy(client):
+    page = client.get("/", headers={"X-Forwarded-Proto": "https", "X-Forwarded-Host": "wrapped.example.com"})
+    assert "https://wrapped.example.com" in unquote(page.get_data(as_text=True))

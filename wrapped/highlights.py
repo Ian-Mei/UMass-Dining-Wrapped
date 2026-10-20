@@ -161,18 +161,19 @@ def plan_paces(tx, as_of, semester_end) -> list:
             continue
         is_meals = bool(charges["is_swipe"].iloc[0])
         used = float(charges["amount"].sum())
+        if not used > 0:
+            continue
         left = float(charges["balance"].iloc[-1])
         per_day = used / max((as_of - charges["timestamp"].iloc[0].date()).days, 1)
 
         runs_out = None
-        if as_of >= semester_end:
+        days_to_end = (semester_end - as_of).days
+        if days_to_end <= 0:
             left_at_end = left
+        elif left / per_day < days_to_end:
+            runs_out, left_at_end = as_of + timedelta(days=left / per_day), 0
         else:
-            out = as_of + timedelta(days=left / per_day)
-            if out < semester_end:
-                runs_out, left_at_end = out, 0
-            else:
-                left_at_end = left - per_day * (semester_end - as_of).days
+            left_at_end = left - per_day * days_to_end
 
         if "dining dollars" in account.lower():
             label = "Dining Dollars"

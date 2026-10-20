@@ -10,6 +10,8 @@ void (async () => {
   const APP = "__APP_ORIGIN__";
   const HISTORY_PDF = "/umass/full/historyPDF.php";
   const RETRIES = 3;
+  // Per attempt, so a request GET never answers is retried instead of hanging the import.
+  const FETCH_TIMEOUT_MS = 20000;
   const DATE = /^\d{4}-\d{1,2}-\d{1,2}$/;
 
   if (location.hostname !== "get.cbord.com") {
@@ -28,7 +30,7 @@ void (async () => {
   const fetchPdf = async (url) => {
     for (let attempt = 1; ; attempt++) {
       try {
-        const res = await fetch(url, { credentials: "same-origin" });
+        const res = await fetch(url, { credentials: "same-origin", signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
         const type = res.headers.get("content-type") || "";
         if (res.ok && type.includes("pdf")) return await res.arrayBuffer();
         throw new Error("GET didn't send back a PDF. Are you still logged in?");
@@ -45,6 +47,8 @@ void (async () => {
     if (event.origin !== APP || event.source !== app) return;
     const { type, id, start, end } = event.data || {};
     if (type !== "fetch" || !DATE.test(start) || !DATE.test(end)) return;
+    // Lets /import know this bookmark is current and working on it, however long GET takes.
+    app.postMessage({ type: "ack", id }, APP);
     try {
       const pdf = await fetchPdf(`${HISTORY_PDF}?dateS=${start}&dateE=${end}`);
       app.postMessage({ type: "pdf", id, pdf }, APP, [pdf]);

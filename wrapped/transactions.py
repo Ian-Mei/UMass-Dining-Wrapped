@@ -3,12 +3,16 @@
 Everything happens in memory: PDFs come in as bytes and are never written to disk.
 """
 import re
+from collections import Counter
 from datetime import datetime
 
 import fitz
 import pandas as pd
 
 HEADER_CELL = "Account Name:"
+# GET silently returns only the newest page of rows (17 when we checked) per history PDF, so a
+# PDF with this many transactions may be missing its oldest ones.
+MAYBE_CUT_OFF_ROWS = 15
 RAW_COLUMNS = ["account", "timestamp", "location", "amount", "balance"]
 
 # Money moving between accounts, not spending.
@@ -45,16 +49,13 @@ def open_pdf(data: bytes):
 
 
 def count_rows(data: bytes) -> int:
-    """Number of transactions in a history PDF, from its text alone (no table layout needed).
+    """Number of transactions in a history PDF."""
+    return transaction_count(rows_from_pdf(data))
 
-    Each row's timestamp is its own line of page text; the "Statement Period: ..." line isn't.
-    """
-    with open_pdf(data) as doc:
-        return sum(
-            parse_timestamp(line) is not None
-            for page in doc
-            for line in page.get_text().splitlines()
-        )
+
+def transaction_count(rows) -> int:
+    # Leaves out leftover header rows like the wrapped "Meals)" line.
+    return sum(parse_timestamp(row[1]) is not None for row in rows)
 
 
 def rows_from_pdf(data: bytes) -> list[list[str]]:
@@ -114,10 +115,20 @@ def cell_text(words, cell) -> str:
 
 def parse_pdfs(pdfs) -> pd.DataFrame:
     """Parse one or more history PDFs (bytes) into a single clean transactions frame."""
-    rows = []
-    for data in pdfs:
-        rows.extend(rows_from_pdf(data))
-    return clean(rows)
+    return clean(merge_rows([rows_from_pdf(data) for data in pdfs]))
+
+
+def merge_rows(per_pdf) -> list[list[str]]:
+    """Combine the rows of several PDFs.
+
+    A row found in two PDFs (overlapping date ranges) is one transaction. Identical rows within
+    one PDF are separate purchases, e.g. two swipes in the same minute on an unlimited plan,
+    whose balance never changes.
+    """
+    merged = Counter()
+    for rows in per_pdf:
+        merged |= Counter(tuple(row) for row in rows)
+    return [list(row) for row in merged.elements()]
 
 
 def parse_timestamp(text: str):
@@ -137,8 +148,6 @@ def clean(rows: list[list[str]]) -> pd.DataFrame:
     Columns: timestamp, account, location, place, terminal, amount, balance, is_swipe, kind, hall, grab_n_go
     """
     raw = pd.DataFrame(rows, columns=RAW_COLUMNS).astype(str)
-    # History is downloaded in overlapping date windows, so the same row can show up twice.
-    raw = raw.drop_duplicates()
     raw = raw[~raw["location"].str.contains(NOT_SPENDING, regex=True)]
     # Only charges ("-$12.00" or "-1" meal) count; deposits and refunds are "+".
     raw = raw[raw["amount"].str.startswith("-")]
