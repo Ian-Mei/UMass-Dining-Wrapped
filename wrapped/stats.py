@@ -84,7 +84,8 @@ def vendor_name(place: str) -> str:
 
 
 def swipe_table(tx: pd.DataFrame) -> pd.DataFrame:
-    halls = tx[tx["kind"] == "hall"]
+    # Only swipes: dining dollars paid at a hall count toward money spent, not meal swipes.
+    halls = tx[(tx["kind"] == "hall") & tx["is_swipe"]]
     columns = {
         hall: swipe_column(halls[halls["hall"] == hall], hall in LATE_NIGHT_HALLS, hall in GRAB_N_GO_HALLS)
         for hall in HALL_ORDER

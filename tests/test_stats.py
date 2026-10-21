@@ -129,3 +129,13 @@ def test_top_ups_leave_top_spots_but_count_toward_total_spent():
 def test_a_swipe_with_an_unreadable_amount_still_counts_once():
     w = wrapped_from([["M Unlimited DC", "10/05/26 12:00:00 PM", "CPOS Worcester DC", "-", "500"]])
     assert w.total_swipes == 1
+
+
+def test_dining_dollars_paid_at_a_hall_are_not_swipes():
+    w = wrapped_from([
+        swipe("CPOS Hampshire DC", "10/05/26 12:00:00 PM"),
+        ["UMass Dining Dollars", "10/06/26 06:00:00 PM", "CPOS Hampshire DC", "-$12.00", "$88.00"],
+    ])
+    assert w.swipes.loc["Total", "Hamp"] == 1
+    assert w.total_swipes == 1
+    assert w.total_spent == pytest.approx(12)
