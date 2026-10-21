@@ -131,7 +131,7 @@ def display_name(place: str, hall, grab_n_go: bool) -> str:
     return name
 
 
-def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None) -> Highlights:
+def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None, balances=None) -> Highlights:
     """tx is a clean transactions frame with a period column (see stats.build_wrapped)."""
     season, year = semester.split()
     semester_end = date(int(year), *SEMESTER_ENDS[season])
@@ -153,7 +153,7 @@ def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None)
     visits = food[~food["is_top_up"]]
     streak = longest_streak(visits["day"])
     return Highlights(
-        plans=plan_paces(tx, pace_until, semester_end),
+        plans=plan_paces(tx, pace_until, semester_end, balances),
         routine=top_routine(visits),
         streak=streak,
         calendar=calendar(visits, as_of, streak),
@@ -165,21 +165,34 @@ def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None)
     )
 
 
-def plan_paces(tx, until, semester_end) -> list:
-    """Each plan's pace from its first charge up to until, projected on to semester_end."""
+def plan_paces(tx, until, semester_end, balances=None) -> list:
+    """Each plan's pace from its first charge up to until, projected on to semester_end.
+
+    All dining-dollar accounts are one plan: RAs get two, an RA one GET spends first and a
+    regular one that sits untouched until then, and both are theirs to spend. balances (each
+    account's latest balance, see transactions.latest_balances) includes accounts nothing has
+    been bought with yet; without it, what's left comes from the last purchase on each account.
+    """
+    balances = balances or {}
+    tx = tx.sort_values("timestamp")
     plans = []
-    for account, charges in tx.sort_values("timestamp").groupby("account"):
+    for plan, charges in tx.groupby(tx["account"].map(plan_name)):
+        accounts = sorted(charges["account"].unique())
+        dining_dollars = plan == DINING_DOLLARS
         # Skip unlimited plans, accounts mostly used for laundry, and balances that don't count down.
-        if (len(charges) < MIN_PLAN_CHARGES or "unlimited" in account.lower()
+        if (len(charges) < MIN_PLAN_CHARGES or "unlimited" in plan.lower()
                 or charges["kind"].isin(FOOD).mean() < 0.5
                 or (until - charges["timestamp"].iloc[-1].date()).days > MAX_PLAN_IDLE_DAYS
-                or not charges["balance"].iloc[-1] < charges["balance"].iloc[0]):
+                or not (dining_dollars or charges["balance"].iloc[-1] < charges["balance"].iloc[0])):
             continue
         is_meals = bool(charges["is_swipe"].iloc[0])
         used = float(charges["amount"].sum())
         if not used > 0:
             continue
-        left = float(charges["balance"].iloc[-1])
+        if dining_dollars:
+            accounts = sorted(set(accounts) | {a for a in balances if plan_name(a) == DINING_DOLLARS})
+        last_charge = charges.groupby("account")["balance"].last()
+        left = float(sum(balances.get(a, last_charge.get(a, 0)) for a in accounts))
         per_day = used / max((until - charges["timestamp"].iloc[0].date()).days, 1)
 
         runs_out = None
@@ -191,13 +204,9 @@ def plan_paces(tx, until, semester_end) -> list:
         else:
             left_at_end = left - per_day * days_to_end
 
-        if "dining dollars" in account.lower():
-            label = "Dining Dollars"
-        else:
-            label = "Meal Swipes" if is_meals else account
         plans.append(PlanPace(
-            label=label,
-            account=account,
+            label=plan if dining_dollars else ("Meal Swipes" if is_meals else plan),
+            account=" + ".join(accounts),
             is_meals=is_meals,
             used=used,
             left=int(left) if is_meals else left,
@@ -207,6 +216,14 @@ def plan_paces(tx, until, semester_end) -> list:
             semester_end=semester_end,
         ))
     return sorted(plans, key=lambda p: (not p.is_meals, -p.used))
+
+
+DINING_DOLLARS = "Dining Dollars"
+
+
+def plan_name(account: str) -> str:
+    """'UMass Dining Dollars' and 'RA/PM Dining Dollars 26-27' are both just Dining Dollars."""
+    return DINING_DOLLARS if "dining dollars" in account.lower() else account
 
 
 def top_routine(food) -> Routine | None:
@@ -287,7 +304,8 @@ def fun_facts(food) -> FunFacts | None:
     busiest = by_day.idxmax()
     that_day = food[food["day"] == busiest].sort_values("timestamp")
     return FunFacts(
-        double_swipes=int((same_place & (gap <= DOUBLE_SWIPE_SECONDS)).sum()),
+        # Two swipes back to back at one place, or one row that took 2 or more.
+        double_swipes=int((same_place & (gap <= DOUBLE_SWIPE_SECONDS)).sum() + (swipes["amount"] - 1).clip(lower=0).sum()),
         places_tried=int(food["spot"].nunique()),
         busiest_day=busiest,
         busiest_day_count=int(by_day[busiest]),
@@ -379,11 +397,14 @@ def remark(template: str, n: int) -> str:
     return template.format(n=n, s="" if n == 1 else "s")
 
 
-def by_count_then_recent(rows, key):
-    """Group rows by key: [(key, count)] with the most first, and ties going to the most recent."""
-    grouped = rows.groupby(key)["timestamp"].agg(["size", "max"])
-    grouped = grouped.sort_values(["size", "max"], ascending=False)
-    return [(name, int(n)) for name, n in grouped["size"].items()]
+def by_count_then_recent(rows, key, swipes=False):
+    """Group rows by key: [(key, count)] with the most first, and ties going to the most recent.
+
+    swipes counts meal swipes rather than rows (a row can take 2).
+    """
+    grouped = rows.groupby(key).agg(n=("amount", "sum") if swipes else ("timestamp", "size"), last=("timestamp", "max"))
+    grouped = grouped.sort_values(["n", "last"], ascending=False)
+    return [(name, int(n)) for name, n in grouped["n"].items()]
 
 
 def vendor_swipes(food):
@@ -392,17 +413,18 @@ def vendor_swipes(food):
 
 def blue_wall(food) -> BlueWall | None:
     swipes = vendor_swipes(food).assign(spot=lambda f: f["name"].map(blue_wall_name)).dropna(subset=["spot"])
-    if len(swipes) < MIN_BLUE_WALL_SWIPES:
+    if swipes["amount"].sum() < MIN_BLUE_WALL_SWIPES:
         return None
-    counts = by_count_then_recent(swipes, "spot")
+    counts = by_count_then_recent(swipes, "spot", swipes=True)
     most = counts[0][1]
     spots = [BlueWallSpot(name, n, n / most) for name, n in counts]
-    return BlueWall(spots=spots, total=len(swipes), remark=remark(REMARKS[spots[0].name], spots[0].swipes))
+    return BlueWall(spots=spots, total=int(swipes["amount"].sum()),
+                    remark=remark(REMARKS[spots[0].name], spots[0].swipes))
 
 
 def harvest(food) -> Harvest | None:
     swipes = vendor_swipes(food)
-    n = int(swipes["name"].str.contains(HARVEST_MARKET, case=False, regex=True).sum())
+    n = int(swipes.loc[swipes["name"].str.contains(HARVEST_MARKET, case=False, regex=True), "amount"].sum())
     if n < MIN_HARVEST_SWIPES:
         return None
     return Harvest(swipes=n, remark=remark(HARVEST_REMARK, n))

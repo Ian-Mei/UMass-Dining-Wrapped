@@ -4,13 +4,13 @@ import pytest
 
 from wrapped import build_wrapped
 from wrapped.highlights import blue_wall_name, display_name
-from wrapped.transactions import clean
+from wrapped.transactions import clean, latest_balances
 
 
 def highlights(rows, today=None):
     tx = clean(rows)
     # By default, run it the day of the last purchase.
-    return build_wrapped(tx, today=today or tx["timestamp"].max().date()).highlights
+    return build_wrapped(tx, today=today or tx["timestamp"].max().date(), balances=latest_balances(rows)).highlights
 
 
 def meal(location, when, account="M Unlimited DC", balance="500"):
@@ -257,3 +257,45 @@ def test_a_topped_up_swipe_is_one_visit_everywhere():
     assert [d.count for d in h.calendar.weeks[0] if d.in_range] == [1, 2]
     assert (h.fun.busiest_day, h.fun.busiest_day_count) == (date(2026, 10, 6), 2)
     assert h.clock.grid["Monday"][12] == 1
+
+
+def test_ra_dining_dollars_count_both_accounts():
+    # RAs get a second dining-dollar account. GET spends the RA one first, so the regular one
+    # sits untouched at $200 with only Meal Plan Office rows, but it's still theirs to spend.
+    rows = [
+        ["UMass Dining Dollars", "08/20/26 07:52:30 AM", "Meal Plan Office", "+$200.00", "$200.00"],
+        ["UMass Dining Dollars", "08/20/26 02:12:22 PM", "Meal Plan Office", "+$200.00", "$400.00"],
+        ["UMass Dining Dollars", "08/31/26 09:42:50 PM", "Meal Plan Office", "-$200.00", "$200.00"],
+        ["RA/PM Dining Dollars 26-27", "08/20/26 08:00:00 AM", "Meal Plan Office", "+$200.00", "$200.00"],
+    ]
+    rows += [dollars("CPOS Wasabi", f"09/{d:02d}/26 12:00:00 PM", 10, 200 - 10 * (i + 1), account="RA/PM Dining Dollars 26-27")
+             for i, d in enumerate(range(1, 31, 2))]  # $150 spent, $50 left on the RA account
+    [plan] = highlights(rows, today=date(2026, 9, 30)).plans
+    assert plan.label == "Dining Dollars"
+    assert plan.left == pytest.approx(250)
+    assert plan.used == pytest.approx(150)
+    # $150 from Sep 1 to Sep 30 is ~$5.17 a day, so the combined $250 lasts until about Nov 17
+    # (the RA account alone would have run out around Oct 9).
+    assert plan.runs_out == date(2026, 11, 17)
+
+
+def test_a_two_swipe_row_counts_as_two_swipes_but_one_visit():
+    # GET sometimes takes 2 swipes in one row (e.g. paying for a friend): "-2", balance down by 2.
+    rows = [
+        ["T YCMP Commuter 155", "10/05/26 12:00:00 PM", "CPOS Worcester DC", "-2", "150"],
+        ["T YCMP Commuter 155", "10/06/26 12:00:00 PM", "CPOS Tamales", "-2", "148"],
+        ["T YCMP Commuter 155", "10/07/26 12:00:00 PM", "CPOS Tamales", "-1", "147"],
+        ["T YCMP Commuter 155", "10/08/26 12:00:00 PM", "CPOS Harvest Market", "-2", "145"],
+        ["T YCMP Commuter 155", "10/09/26 12:00:00 PM", "CPOS Harvest Market", "-2", "143"],
+        ["T YCMP Commuter 155", "10/10/26 12:00:00 PM", "CPOS Harvest Market", "-1", "142"],
+    ]
+    w = build_wrapped(clean(rows), today=date(2026, 10, 10), balances=latest_balances(rows))
+    assert w.swipes.loc["Total", "Worcester"] == 2
+    assert w.swipes.loc["Lunch", "Worcester"] == 2
+    assert w.total_swipes == 10
+    h = w.highlights
+    assert [(s.name, s.swipes) for s in h.blue_wall.spots] == [("Tamales", 3)]
+    assert h.blue_wall.total == 3
+    assert h.harvest.swipes == 5
+    assert h.fun.double_swipes == 4
+    assert sum(d.count for week in h.calendar.weeks for d in week) == 6
