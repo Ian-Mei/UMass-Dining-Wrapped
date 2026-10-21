@@ -10,7 +10,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from wrapped import ParseError, build_wrapped
 from wrapped.transactions import (
-    GET_SMALLEST_LIMIT, MAYBE_CUT_OFF_ROWS, balance_gaps, clean, count_rows, latest_balances, merge_rows, printed_date,
+    GET_SMALLEST_LIMIT, MAYBE_CUT_OFF_ROWS, account_history, balance_gaps, clean, count_rows, merge_rows, printed_date,
     rows_from_pdf, transaction_count,
 )
 
@@ -138,8 +138,9 @@ def build_from_pdfs(pdfs):
     per_pdf = [rows_from_pdf(pdf) for pdf in pdfs]
     rows = merge_rows(per_pdf)
     printed = [d for d in map(printed_date, pdfs) if d]
-    result = build_wrapped(clean(rows), today=max(printed, default=None), balances=latest_balances(rows))
-    maybe_cut_off = any(transaction_count(r) >= GET_SMALLEST_LIMIT for r in per_pdf) or bool(balance_gaps(rows))
+    history = account_history(rows)
+    result = build_wrapped(clean(rows), today=max(printed, default=None), history=history)
+    maybe_cut_off = any(transaction_count(r) >= GET_SMALLEST_LIMIT for r in per_pdf) or bool(balance_gaps(history))
     return result, maybe_cut_off
 
 

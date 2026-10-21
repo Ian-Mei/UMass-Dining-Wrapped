@@ -12,6 +12,8 @@ WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", 
 FOOD = ["hall", "vendor"]
 # Roughly the last day of finals, for "will your plan last?" projections.
 SEMESTER_ENDS = {"Fall": (12, 18), "Spring": (5, 15), "Summer": (8, 15)}
+# Where the bookmarklet starts downloading each semester (see static/scripts/history_windows.js).
+SEMESTER_STARTS = {"Fall": (8, 15), "Spring": (1, 15), "Summer": (5, 16)}
 MIN_PLAN_CHARGES = 5
 # Only project plans still in use, not e.g. a staff training account from the first week.
 MAX_PLAN_IDLE_DAYS = 21
@@ -131,9 +133,10 @@ def display_name(place: str, hall, grab_n_go: bool) -> str:
     return name
 
 
-def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None, balances=None) -> Highlights:
+def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None, history=None) -> Highlights:
     """tx is a clean transactions frame with a period column (see stats.build_wrapped)."""
     season, year = semester.split()
+    semester_start = date(int(year), *SEMESTER_STARTS[season])
     semester_end = date(int(year), *SEMESTER_ENDS[season])
     as_of = tx["timestamp"].max().date()
     # Plan pace counts up to today, so days without buying anything slow it down. Run after the
@@ -153,7 +156,7 @@ def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None,
     visits = food[~food["is_top_up"]]
     streak = longest_streak(visits["day"])
     return Highlights(
-        plans=plan_paces(tx, pace_until, semester_end, balances),
+        plans=plan_paces(tx, pace_until, semester_start, semester_end, history),
         routine=top_routine(visits),
         streak=streak,
         calendar=calendar(visits, as_of, streak),
@@ -165,16 +168,17 @@ def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None,
     )
 
 
-def plan_paces(tx, until, semester_end, balances=None) -> list:
+def plan_paces(tx, until, semester_start, semester_end, history=None) -> list:
     """Each plan's pace from its first charge up to until, projected on to semester_end.
 
     All dining-dollar accounts are one plan: RAs get two, an RA one GET spends first and a
-    regular one that sits untouched until then, and both are theirs to spend. balances (each
-    account's latest balance, see transactions.latest_balances) includes accounts nothing has
-    been bought with yet; without it, what's left comes from the last purchase on each account.
+    regular one that sits untouched until then, and both are theirs to spend. history (see
+    transactions.account_history) has every account, including ones nothing has been bought
+    with yet; without it, what's left comes from the last purchase on each account.
     """
-    balances = balances or {}
-    tx = tx.sort_values("timestamp")
+    history = history or {}
+    # Only this semester's purchases, in case the upload also covers an earlier one.
+    tx = tx[tx["timestamp"].dt.date >= semester_start].sort_values("timestamp")
     plans = []
     for plan, charges in tx.groupby(tx["account"].map(plan_name)):
         accounts = sorted(charges["account"].unique())
@@ -190,9 +194,14 @@ def plan_paces(tx, until, semester_end, balances=None) -> list:
         if not used > 0:
             continue
         if dining_dollars:
-            accounts = sorted(set(accounts) | {a for a in balances if plan_name(a) == DINING_DOLLARS})
+            # Plus dining-dollar accounts with no purchases yet, if they're from this semester
+            # (not, say, last year's RA account still in an older upload).
+            accounts = sorted(set(accounts) | {
+                a for a, rows in history.items()
+                if plan_name(a) == DINING_DOLLARS and any(semester_start <= when.date() <= until for when, _, _ in rows)
+            })
         last_charge = charges.groupby("account")["balance"].last()
-        left = float(sum(balances.get(a, last_charge.get(a, 0)) for a in accounts))
+        left = float(sum(balance_on(history.get(a), until, last_charge.get(a, 0)) for a in accounts))
         per_day = used / max((until - charges["timestamp"].iloc[0].date()).days, 1)
 
         runs_out = None
@@ -219,6 +228,16 @@ def plan_paces(tx, until, semester_end, balances=None) -> list:
 
 
 DINING_DOLLARS = "Dining Dollars"
+
+
+def balance_on(rows, day, fallback):
+    """An account's balance at the end of day, from its account_history rows (fallback if none).
+
+    Rows after it don't count: over winter break the fall history can already have a Dec 20 row
+    clearing unused swipes, but what was left at the end of fall is the balance before that.
+    """
+    before = [balance for when, _, balance in rows or [] if when.date() <= day]
+    return before[-1] if before else fallback
 
 
 def plan_name(account: str) -> str:
@@ -328,7 +347,8 @@ BLUE_WALL = {
 }
 HARVEST_MARKET = r"\bharvest market\b"
 
-# One line about your top spot. {n} is the swipe count and {s} pluralizes the word before it.
+# One line about your top spot. {n} is the swipe count and {s} pluralizes the word before it;
+# {t} and {ts} are the same for trips there (a row can take 2 swipes but it's still one trip).
 REMARKS = {
     "Tavola": "{n} swipe{s} of pizza, pasta and hummus bowls. Tavola is basically your Italian grandma now.",
     "Tamales": "{n} burrito{s} deep. Those house-made tortillas have a hold on you.",
@@ -337,10 +357,10 @@ REMARKS = {
     "Green Fields": "{n} custom salad{s} and wraps. Somebody's actually eating their greens.",
     "Deli Delish": "{n} grinder{s} and hot-pressed sandwiches. Deli Delish should name one after you.",
     "Yum! Bakery": "{n} swipe{s} on cookies, cakes and macarons. Dessert counts as a meal if you swipe for it.",
-    "People's Organic Coffee": "{n} coffee run{s}. People's Organic is basically fueling your GPA.",
-    "Paciugo": "{n} trip{s} for gelato. It's always gelato weather if you believe hard enough.",
+    "People's Organic Coffee": "{t} coffee run{ts}. People's Organic is basically fueling your GPA.",
+    "Paciugo": "{t} trip{ts} for gelato. It's always gelato weather if you believe hard enough.",
 }
-HARVEST_REMARK = "{n} trip{s} to the hot bar. The Harvest Market staff probably know your order before you do."
+HARVEST_REMARK = "{t} trip{ts} to the hot bar. The Harvest Market staff probably know your order before you do."
 
 
 @dataclass
@@ -393,8 +413,8 @@ def blue_wall_name(name: str) -> str | None:
     return None
 
 
-def remark(template: str, n: int) -> str:
-    return template.format(n=n, s="" if n == 1 else "s")
+def remark(template: str, swipes: int, trips: int) -> str:
+    return template.format(n=swipes, s="" if swipes == 1 else "s", t=trips, ts="" if trips == 1 else "s")
 
 
 def by_count_then_recent(rows, key, swipes=False):
@@ -413,21 +433,24 @@ def vendor_swipes(food):
 
 def blue_wall(food) -> BlueWall | None:
     swipes = vendor_swipes(food).assign(spot=lambda f: f["name"].map(blue_wall_name)).dropna(subset=["spot"])
-    if swipes["amount"].sum() < MIN_BLUE_WALL_SWIPES:
+    total = int(swipes["amount"].sum())
+    if total < MIN_BLUE_WALL_SWIPES:
         return None
     counts = by_count_then_recent(swipes, "spot", swipes=True)
     most = counts[0][1]
     spots = [BlueWallSpot(name, n, n / most) for name, n in counts]
-    return BlueWall(spots=spots, total=int(swipes["amount"].sum()),
-                    remark=remark(REMARKS[spots[0].name], spots[0].swipes))
+    top = spots[0].name
+    return BlueWall(spots=spots, total=total,
+                    remark=remark(REMARKS[top], spots[0].swipes, int((swipes["spot"] == top).sum())))
 
 
 def harvest(food) -> Harvest | None:
     swipes = vendor_swipes(food)
-    n = int(swipes.loc[swipes["name"].str.contains(HARVEST_MARKET, case=False, regex=True), "amount"].sum())
+    there = swipes[swipes["name"].str.contains(HARVEST_MARKET, case=False, regex=True)]
+    n = int(there["amount"].sum())
     if n < MIN_HARVEST_SWIPES:
         return None
-    return Harvest(swipes=n, remark=remark(HARVEST_REMARK, n))
+    return Harvest(swipes=n, remark=remark(HARVEST_REMARK, n, len(there)))
 
 
 def top_ups(food) -> TopUps | None:

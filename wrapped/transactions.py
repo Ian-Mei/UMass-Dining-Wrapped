@@ -135,14 +135,14 @@ class BalanceGap:
     missing: float   # how much the balance dropped beyond what the rows explain
 
 
-def balance_gaps(rows) -> list[BalanceGap]:
+def balance_gaps(history) -> list[BalanceGap]:
     """Where an account's balance dropped by more than its rows explain: GET left rows out.
 
-    A balance that went up unexplained is a reload with no row of its own (e.g. Free Friday's
-    weekly swipe), not missing purchases, so only drops count.
+    history comes from account_history. A balance that went up unexplained is a reload with no
+    row of its own (e.g. Free Friday's weekly swipe), not missing purchases, so only drops count.
     """
     gaps = []
-    for account, ordered in account_history(rows).items():
+    for account, ordered in history.items():
         for (when, _, before), (_, change, after) in zip(ordered, ordered[1:]):
             missing = round(before + change - after, 2)
             if missing > 0:
@@ -150,17 +150,13 @@ def balance_gaps(rows) -> list[BalanceGap]:
     return gaps
 
 
-def latest_balances(rows) -> dict[str, float]:
-    """What's left on each account, from every row (deposits and Meal Plan Office ones too).
-
-    clean() keeps only purchases, so an account nothing has been bought with yet (like an RA's
-    regular dining dollars, which GET leaves until the RA ones run out) isn't in it at all.
-    """
-    return {account: ordered[-1][2] for account, ordered in account_history(rows).items()}
-
-
 def account_history(rows) -> dict[str, list]:
-    """Each account's (when, change, balance after) rows, oldest first, accounts sorted by name."""
+    """Each account's (when, change, balance after) rows, oldest first, accounts sorted by name.
+
+    Built from every row, deposits and Meal Plan Office ones too. clean() keeps only purchases,
+    so an account nothing has been bought with yet (like an RA's regular dining dollars, which
+    GET leaves until the RA ones run out) isn't in it at all.
+    """
     entries = {}
     for account, timestamp, _location, amount, balance in rows:
         when, change, after = parse_timestamp(timestamp), to_number(amount), to_number(balance)
