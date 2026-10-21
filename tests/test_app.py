@@ -36,8 +36,9 @@ def test_rows_says_when_a_window_may_be_cut_off(client):
         rows = [swipe("CPOS Worcester DC", f"09/{d % 28 + 1:02d}/26 12:{d:02d}:00 PM") for d in range(n)]
         return client.post("/rows", data=make_history_pdf(rows)).get_json()
 
-    assert check(3) == {"rows": 3, "full": False}
-    assert check(17) == {"rows": 17, "full": True}
+    # GET's limit varies by person (14 rows was the smallest seen), so split well below it.
+    assert check(9) == {"rows": 9, "full": False}
+    assert check(10) == {"rows": 10, "full": True}
 
 
 def test_rows_rejects_garbage(client):
@@ -175,3 +176,13 @@ def test_warns_when_a_pdf_may_be_cut_off(client):
 def test_bookmarklet_uses_the_public_address_behind_a_proxy(client):
     page = client.get("/", headers={"X-Forwarded-Proto": "https", "X-Forwarded-Host": "wrapped.example.com"})
     assert "https://wrapped.example.com" in unquote(page.get_data(as_text=True))
+
+
+def test_warns_when_a_balance_drops_more_than_the_purchases_explain(client):
+    rows = [
+        ["UMass Dining Dollars", "10/12/26 12:47:15 PM", "CPOS Roots Cafe", "-$11.00", "$232.50"],
+        # A $6.50 purchase GET left out happened here.
+        ["UMass Dining Dollars", "10/15/26 03:45:52 PM", "CPOS Peoples Organic Coffee", "-$6.50", "$219.50"],
+    ]
+    page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
+    assert "may be missing" in page

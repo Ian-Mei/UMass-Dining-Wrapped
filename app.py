@@ -9,7 +9,9 @@ from waitress import serve
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from wrapped import ParseError, build_wrapped
-from wrapped.transactions import MAYBE_CUT_OFF_ROWS, clean, count_rows, merge_rows, rows_from_pdf, transaction_count
+from wrapped.transactions import (
+    MAYBE_CUT_OFF_ROWS, balance_gaps, clean, count_rows, merge_rows, rows_from_pdf, transaction_count,
+)
 
 GET_ORIGIN = "https://get.cbord.com"
 MAX_UPLOAD_MB = 25
@@ -126,10 +128,16 @@ def wrapped():
 
 
 def build_from_pdfs(pdfs):
-    """The Wrapped for these PDFs, and whether any of them may have been cut off by GET."""
+    """The Wrapped for these PDFs, and whether GET may have left rows out of them.
+
+    Two signs: a PDF as full as GET's limit (catches a whole-semester manual export), or a
+    balance that drops more than the rows explain (catches a cut window in between).
+    """
     per_pdf = [rows_from_pdf(pdf) for pdf in pdfs]
-    result = build_wrapped(clean(merge_rows(per_pdf)))
-    return result, any(transaction_count(rows) >= MAYBE_CUT_OFF_ROWS for rows in per_pdf)
+    rows = merge_rows(per_pdf)
+    result = build_wrapped(clean(rows))
+    maybe_cut_off = any(transaction_count(r) >= MAYBE_CUT_OFF_ROWS for r in per_pdf) or bool(balance_gaps(rows))
+    return result, maybe_cut_off
 
 
 def render_wrapped(result, maybe_cut_off=False):

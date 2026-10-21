@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from wrapped.transactions import ParseError, clean, count_rows, parse_pdfs, parse_timestamp, rows_from_pdf
+from wrapped.transactions import ParseError, balance_gaps, clean, count_rows, parse_pdfs, parse_timestamp, rows_from_pdf
 
 from .conftest import charge, make_history_pdf, swipe
 
@@ -99,3 +99,42 @@ def test_marks_dining_dollar_top_ups_on_a_swipe():
     top_ups = tx.loc[tx["is_top_up"], ["location", "amount"]].values.tolist()
     assert top_ups == [["CPOS Tamales 2", 2.50]]
     assert not tx.loc[tx["is_swipe"], "is_top_up"].any()
+
+
+def test_balance_gaps_find_missing_purchases():
+    rows = [
+        ["UMass Dining Dollars", "10/04/26 03:26:31 PM", "CPOS Roots Cafe", "-$6.50", "$243.50"],
+        ["UMass Dining Dollars", "10/12/26 12:47:15 PM", "CPOS Roots Cafe", "-$11.00", "$232.50"],
+        ["UMass Dining Dollars", "10/15/26 03:45:52 PM", "CPOS Peoples Organic Coffee", "-$6.50", "$219.50"],
+        ["E Unlimited 250", "10/13/26 07:47:20 PM", "CPOS Worcester DC", "-1", "501"],
+        ["E Unlimited 250", "10/15/26 11:55:03 AM", "CPOS Worcester GG", "-1", "495"],
+    ]
+    gaps = balance_gaps(rows)
+    assert [(g.account, g.missing) for g in gaps] == [("E Unlimited 250", 5), ("UMass Dining Dollars", 6.5)]
+
+
+def test_balance_gaps_ignore_deposits_reloads_and_same_second_purchases():
+    rows = [
+        ["UMass Dining Dollars", "08/20/26 07:47:19 AM", "Meal Plan Office", "+$250.00", "$250.00"],
+        ["UMass Dining Dollars", "09/01/26 12:00:00 PM", "CPOS Wasabi", "-$10.00", "$240.00"],
+        # Two items rung up in the same second, listed in either order.
+        ["UMass Dining Dollars", "09/02/26 12:00:00 PM", "CPOS Tamales", "-$2.00", "$228.00"],
+        ["UMass Dining Dollars", "09/02/26 12:00:00 PM", "CPOS Tamales", "-$10.00", "$230.00"],
+        # Free Friday gets topped back up each week with no row for it.
+        ["Free Friday DC", "09/04/26 12:00:00 PM", "CPOS Hampshire DC", "-1", "0"],
+        ["Free Friday DC", "09/11/26 12:00:00 PM", "CPOS Hampshire DC", "-1", "0"],
+    ]
+    assert balance_gaps(rows) == []
+
+
+def test_balance_gaps_handle_meal_plan_setup_rows():
+    # The Meal Plan Office logs a "+0" next to the real deposit, in the same second.
+    rows = [
+        ["C Basic Plan", "08/20/26 07:51:18 AM", "Meal Plan Office", "+0", "209"],
+        ["C Basic Plan", "08/20/26 07:51:18 AM", "Meal Plan Office", "+209", "209"],
+        ["C Basic Plan", "08/20/26 11:00:02 AM", "PatronImport Location", "-209", "0"],
+        ["C Basic Plan", "08/20/26 02:09:09 PM", "Meal Plan Office", "+0", "209"],
+        ["C Basic Plan", "08/20/26 02:09:09 PM", "Meal Plan Office", "+209", "209"],
+        ["C Basic Plan", "09/02/26 08:16:44 PM", "CPOS Hampshire DC", "-1", "208"],
+    ]
+    assert balance_gaps(rows) == []

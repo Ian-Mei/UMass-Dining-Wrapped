@@ -4,15 +4,18 @@ Everything happens in memory: PDFs come in as bytes and are never written to dis
 """
 import re
 from collections import Counter
+from dataclasses import dataclass
 from datetime import datetime
+from itertools import groupby, permutations
 
 import fitz
 import pandas as pd
 
 HEADER_CELL = "Account Name:"
-# GET silently returns only the newest page of rows (17 when we checked) per history PDF, so a
-# PDF with this many transactions may be missing its oldest ones.
-MAYBE_CUT_OFF_ROWS = 15
+# GET silently returns only the newest rows per history PDF and drops the older ones. How many
+# varies by person (we've seen 14, 17 and 21), so a PDF with this many transactions may be
+# missing its oldest ones.
+MAYBE_CUT_OFF_ROWS = 10
 RAW_COLUMNS = ["account", "timestamp", "location", "amount", "balance"]
 
 # Money moving between accounts, not spending.
@@ -114,6 +117,62 @@ def cell_text(words, cell) -> str:
         w[4] for w in words
         if x0 <= (w[0] + w[2]) / 2 <= x1 and y0 <= (w[1] + w[3]) / 2 <= y1
     )
+
+
+@dataclass
+class BalanceGap:
+    account: str
+    after: datetime  # the last row before the missing ones
+    missing: float   # how much the balance dropped beyond what the rows explain
+
+
+def balance_gaps(rows) -> list[BalanceGap]:
+    """Where an account's balance dropped by more than its rows explain: GET left rows out.
+
+    A balance that went up unexplained is a reload with no row of its own (e.g. Free Friday's
+    weekly swipe), not missing purchases, so only drops count.
+    """
+    entries = {}
+    for account, timestamp, _location, amount, balance in rows:
+        when, change, after = parse_timestamp(timestamp), to_number(amount), to_number(balance)
+        if when and change is not None and after is not None:
+            entries.setdefault(account, []).append((when, change, after))
+    gaps = []
+    for account in sorted(entries):
+        ordered = chain_order(entries[account])
+        for (when, _, before), (_, change, after) in zip(ordered, ordered[1:]):
+            missing = round(before + change - after, 2)
+            if missing > 0:
+                gaps.append(BalanceGap(account, when, missing))
+    return gaps
+
+
+def chain_order(entries):
+    """Sort (when, change, balance) by time. Rows in the same second come in any order (two items
+    rung up together, or the Meal Plan Office's "+0" next to a deposit), so within a second use an
+    order where each balance follows from the one before, if there is one."""
+    ordered = []
+    for _, group in groupby(sorted(entries, key=lambda e: e[0]), key=lambda e: e[0]):
+        group = list(group)
+        fallback = sorted(group, key=lambda e: -e[2])  # charges leave the higher balance first
+        candidates = permutations(group) if len(group) <= 5 else [fallback]
+        best = fallback
+        for order in candidates:
+            balance = ordered[-1][2] if ordered else order[0][2] - order[0][1]
+            if all(abs(balance_before + e[1] - e[2]) < 0.005
+                   for balance_before, e in zip([balance] + [x[2] for x in order], order)):
+                best = list(order)
+                break
+        ordered += best
+    return ordered
+
+
+def to_number(text: str):
+    """'-$6.50' -> -6.5, '+600' -> 600.0, '' -> None."""
+    try:
+        return float(re.sub(r"[^\d.+-]", "", text))
+    except ValueError:
+        return None
 
 
 def parse_pdfs(pdfs) -> pd.DataFrame:
