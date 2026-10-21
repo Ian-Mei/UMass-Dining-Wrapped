@@ -64,16 +64,18 @@ def semester_name(timestamps: pd.Series) -> tuple[str, str]:
 
 
 def swipe_column(visits: pd.DataFrame, late_night: bool, grab_n_go: bool) -> dict:
+    # Counts swipes, not rows: GET sometimes takes 2 in one row (e.g. paying for a friend).
     is_grab = visits["grab_n_go"] if grab_n_go else pd.Series(False, index=visits.index)
-    periods = visits.loc[~is_grab, "period"].value_counts()
+    visits = visits.assign(amount=visits["amount"].fillna(1))  # an unreadable amount is still a swipe
+    periods = visits[~is_grab].groupby("period")["amount"].sum()
     return {
         "Breakfast": int(periods.get("Breakfast", 0)),
         "Lunch": int(periods.get("Lunch", 0)),
         "Dinner": int(periods.get("Dinner", 0)),
-        # Places without late night only count those visits toward the total.
+        # Places without late night only count those swipes toward the total.
         "Late_Night": int(periods.get("Late_Night", 0)) if late_night else None,
-        "GrabNGo": int(is_grab.sum()) if grab_n_go else None,
-        "Total": len(visits),
+        "GrabNGo": int(visits.loc[is_grab, "amount"].sum()) if grab_n_go else None,
+        "Total": int(visits["amount"].sum()),
     }
 
 
@@ -127,8 +129,10 @@ def laundry_stats(tx: pd.DataFrame) -> Laundry | None:
     )
 
 
-def build_wrapped(tx: pd.DataFrame, today=None) -> Wrapped:
-    """today (a date) is for tests; it defaults to the real date."""
+def build_wrapped(tx: pd.DataFrame, today=None, history=None) -> Wrapped:
+    """today: the date plan pace counts up to (defaults to the real date).
+    history: every account's balance history (transactions.account_history), so plan pace sees
+    accounts nothing has been bought with yet."""
     if tx.empty:
         raise ParseError("Couldn't find any purchases in that history. Make sure it covers a semester you were on campus.")
     tx = tx.assign(period=meal_period(tx["timestamp"]))
@@ -149,7 +153,7 @@ def build_wrapped(tx: pd.DataFrame, today=None) -> Wrapped:
         total_swipes=int(swipes.loc["Total"].sum()),
         total_spent=float(tx.loc[tx["kind"].isin(["hall", "vendor"]) & ~tx["is_swipe"], "amount"].sum()),
         laundry=laundry_stats(tx),
-        highlights=build_highlights(tx, semester, today),
+        highlights=build_highlights(tx, semester, today, history),
         personality=None,
     )
     wrapped.personality = pick_personality(wrapped)

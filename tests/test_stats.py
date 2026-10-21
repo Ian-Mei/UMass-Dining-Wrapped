@@ -124,3 +124,8 @@ def test_top_ups_leave_top_spots_but_count_toward_total_spent():
     assert w.vendors.loc["Harvest Market", "visits"] == 1
     assert w.vendors.loc["Harvest Market", "spent"] == pytest.approx(6.00)
     assert w.total_spent == pytest.approx(10.50)
+
+
+def test_a_swipe_with_an_unreadable_amount_still_counts_once():
+    w = wrapped_from([["M Unlimited DC", "10/05/26 12:00:00 PM", "CPOS Worcester DC", "-", "500"]])
+    assert w.total_swipes == 1
