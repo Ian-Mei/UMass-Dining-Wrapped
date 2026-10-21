@@ -29,10 +29,11 @@ wrapped/
   transactions.py       PDF bytes → clean DataFrame of charges (PyMuPDF: table grid + words)
   stats.py              charges → Wrapped (dining halls, vendors, laundry, totals)
   highlights.py         plan run-out pace, routine, Blue Wall, Harvest Market, top-ups, streak
-                        calendar, dining clock, fun facts
+                        calendar, dining clock, fun facts, explorer data
   personality.py        personality rules
   __main__.py           python -m wrapped history.pdf  (print stats for a local PDF)
 templates/              home.html, import.html, wrapped.html
+static/scripts/explorer.js  the Explore your days / Explore your places screens
 static/                 CSS, images, loading screen, bookmarklet source
 tests/                  pytest suite (synthetic PDFs only, no real data)
 ```
@@ -44,7 +45,7 @@ pip install -r requirements-dev.txt
 python app.py                         # serves http://localhost:8000 with waitress
 flask --app app run --debug           # or the Flask dev server with auto-reload
 python -m pytest                      # tests
-node --test tests/                    # bookmarklet date-window tests
+node --test tests/                    # bookmarklet date windows + explorer helpers
 python -m wrapped path/to/history.pdf # check what the parser makes of a real export
 ```
 

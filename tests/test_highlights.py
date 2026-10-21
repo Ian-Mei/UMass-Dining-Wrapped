@@ -323,3 +323,73 @@ def test_trip_remarks_count_visits_not_swipes():
     harvest = highlights(rows).harvest
     assert harvest.swipes == 6
     assert harvest.remark.startswith("3 trips")
+
+
+def test_explorer_lists_every_food_purchase():
+    rows = [
+        ycmp("CPOS Star Ginger", "09/14/26 12:30:00 PM"),
+        ["T YCMP Commuter 155", "09/14/26 12:41:00 PM", "CPOS Harvest Market", "-2", "140"],
+        dollars("CPOS Harvest Market", "09/14/26 12:41:08 PM", 3, 97),       # topped up the swipe
+        ycmp("CPOS Worcester GG", "09/15/26 01:10:00 AM"),                  # still Monday night
+        ["Student Debit Plan", "09/14/26 01:41:00 PM", "X - OAK DRYER 10", "-$1.40", "$5.80"],  # not food
+    ]
+    purchases = highlights(rows).explorer.purchases
+    assert purchases == [
+        {"day": "2026-09-14", "time": "12:30 PM", "place": "Star Ginger", "swipes": 1, "dollars": 0, "top_up": False},
+        {"day": "2026-09-14", "time": "12:41 PM", "place": "Harvest Market", "swipes": 2, "dollars": 0, "top_up": False},
+        {"day": "2026-09-14", "time": "12:41 PM", "place": "Harvest Market", "swipes": 0, "dollars": 3.0, "top_up": True},
+        {"day": "2026-09-14", "time": "1:10 AM", "place": "Worcester Grab 'n Go", "swipes": 1, "dollars": 0, "top_up": False},
+    ]
+
+
+def test_explorer_places_most_visited_first_with_a_pattern_note():
+    # Like Datya's Tamales: Mondays and Tuesdays at dinner, plus a Wednesday and a Friday lunch.
+    days = [("09/14", "06:44"), ("09/15", "05:35"), ("09/21", "06:33"), ("09/22", "06:05"),
+            ("09/28", "06:20"), ("09/29", "05:39"), ("09/09", "05:42"), ("10/16", "11:36")]
+    rows = [ycmp("CPOS Tamales", f"{d}/26 {t}:00 PM" if t != "11:36" else f"{d}/26 {t}:00 AM") for d, t in days]
+    rows += [ycmp("CPOS Wasabi", f"10/0{d}/26 12:00:00 PM") for d in (1, 2)]
+    places = highlights(rows).explorer.places
+    assert [(p["name"], p["visits"], p["swipes"]) for p in places] == [("Tamales", 8, 8), ("Wasabi", 2, 2)]
+    assert places[0]["note"] == "Mostly Mondays and Tuesdays, usually around dinner."
+    assert places[1]["note"] is None  # too few visits to call it a pattern
+
+
+def test_no_pattern_note_when_visits_are_spread_out():
+    rows = [ycmp("CPOS Tamales", f"10/{d:02d}/26 {h}") for d, h in
+            [(5, "08:00:00 AM"), (6, "12:00:00 PM"), (7, "06:00:00 PM"), (8, "09:00:00 AM"), (9, "01:00:00 PM"), (10, "07:00:00 PM")]]
+    assert highlights(rows).explorer.places[0]["note"] is None
+
+
+def test_links_name_the_place_as_the_explorer_does():
+    rows = [ycmp("CPOS Yum Bakery", f"10/0{d}/26 12:00:00 PM") for d in (1, 2, 3)]
+    assert highlights(rows).blue_wall.top.place == "Yum Bakery"  # the explorer's name, not "Yum! Bakery"
+
+
+def test_raw_data_sections():
+    rows = [
+        ycmp("CPOS Worcester DC", "10/05/26 08:00:00 AM"),
+        ycmp("CPOS Worcester GG", "10/05/26 12:00:00 PM"),
+        ycmp("CPOS Worcester DC", "10/05/26 10:30:00 PM"),
+        dollars("CPOS Hampshire DC", "10/06/26 06:00:00 PM", 12, 88),          # paid at a hall
+        ["T YCMP Commuter 155", "10/06/26 12:00:00 PM", "CPOS Tamales", "-2", "140"],
+        dollars("CPOS Tamales", "10/06/26 12:00:05 PM", 1.5, 86.5),          # top-up, still counts here
+        ycmp("CPOS Harvest Market", "10/07/26 12:00:00 PM"),
+        dollars("CPOS Peet's Coffee & Tea", "10/07/26 09:00:00 AM", 4.25, 82.25),
+        ["Student Debit Plan", "10/07/26 01:41:00 PM", "X - OAK DRYER 10", "-$1.40", "$5.80"],  # not food
+    ]
+    w = build_wrapped(clean(rows), today=date(2026, 10, 7), history=account_history(rows))
+    sections = {s["title"]: s for s in w.highlights.raw_sections}
+    assert list(sections) == ["Dining halls", "Blue Wall", "Harvest Market", "Everywhere else"]
+    halls = {r["place"]: r for r in sections["Dining halls"]["rows"]}
+    assert list(halls) == ["Worcester", "Hamp"]
+    assert halls["Worcester"] == {"place": "Worcester", "Breakfast": 1, "Lunch": 0, "Dinner": 0, "Late night": 1,
+                                  "Grab 'n Go": 1, "Swipes": 3, "Dollars": 0}
+    assert halls["Hamp"]["Dollars"] == pytest.approx(12)
+    [tamales] = sections["Blue Wall"]["rows"]
+    assert (tamales["place"], tamales["Lunch"], tamales["Swipes"], tamales["Dollars"]) == ("Tamales", 2, 2, 1.5)
+    assert "Late night" not in tamales
+    assert sections["Everywhere else"]["rows"][0]["place"] == "Peet's Coffee & Tea"
+    # The sections add up to the Wrapped's totals.
+    all_rows = [r for s in sections.values() for r in s["rows"]]
+    assert sum(r["Swipes"] for r in all_rows) == w.total_swipes
+    assert sum(r["Dollars"] for r in all_rows) == pytest.approx(w.total_spent)

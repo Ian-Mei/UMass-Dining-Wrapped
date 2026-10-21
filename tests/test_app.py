@@ -205,3 +205,13 @@ def test_plan_pace_counts_up_to_when_the_pdf_was_printed():
     result, _ = build_from_pdfs([make_history_pdf(rows, printed=date(2026, 10, 1))])
     [plan] = result.highlights.plans
     assert plan.runs_out == date(2026, 10, 8)
+
+
+def test_results_page_has_the_raw_data_and_the_explorer(client):
+    rows = [swipe("CPOS Tamales", f"09/{d:02d}/26 06:00:00 PM") for d in (14, 15, 21)]
+    page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
+    assert 'id="days"' in page and 'id="places"' in page
+    assert 'id="explorer-data"' in page and '"place": "Tamales"' in page
+    assert 'data-explore-day="2026-09-14"' in page  # busiest day, and a streak calendar square
+    assert 'data-explore-place="Tamales"' in page  # from the Blue Wall reveal
+    assert "All your data" in page and "Every Place" in page

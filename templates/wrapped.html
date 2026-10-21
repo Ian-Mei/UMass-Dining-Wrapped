@@ -85,6 +85,7 @@
                 <p class="big">{{ bw.top.swipes }}</p>
                 <p class="caption">meal swipe{{ "s" if bw.top.swipes != 1 }} this semester</p>
                 <p class="remark">{{ bw.remark }}</p>
+                <a class="explore-link" href="#places" data-explore-place="{{ bw.top.place }}">See every visit &rarr;</a>
               </div>
               <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
             </div>
@@ -122,6 +123,7 @@
                 <p class="big">{{ h.harvest.swipes }}</p>
                 <p class="caption">meal swipes at Harvest Market</p>
                 <p class="remark">{{ h.harvest.remark }}</p>
+                <a class="explore-link" href="#places" data-explore-place="{{ "Harvest Market" }}">See every visit &rarr;</a>
               </div>
               <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
             </div>
@@ -164,11 +166,12 @@
               <div class="listheader"><h1 class="title">Top Spots</h1></div>
               <div class="list">
                 {% for name, vendor in w.vendors.head(3).iterrows() %}
-                <div class="listitem">
+                <a class="listitem explorable" href="#places" data-explore-place="{{ name }}">
                   <span class="itemname">{{ loop.index }}. {{ name }}<small>{{ vendor.visits|int }} visit{{ "s" if vendor.visits != 1 }}</small></span>
                   <span class="itemvalue">${{ "%.2f"|format(vendor.spent) }}</span>
-                </div>
+                </a>
                 {% endfor %}
+                <p class="caption">Tap a spot to see every visit</p>
               </div>
               <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
             </div>
@@ -224,7 +227,7 @@
                   {% for label in h.calendar.month_labels %}<span class="axis month">{{ label }}</span>{% endfor %}
                   {% for weekday in range(7) %}
                   <span class="axis">{{ "SMTWTFS"[weekday] }}</span>
-                  {% for week in h.calendar.weeks %}{% set d = week[weekday] %}<span class="cell l{{ d.level }}{% if not d.in_range %} out{% endif %}{% if d.in_streak %} streak{% endif %}" title="{{ d.day|short_date }}: {{ d.count }}"></span>{% endfor %}
+                  {% for week in h.calendar.weeks %}{% set d = week[weekday] %}<span class="cell l{{ d.level }}{% if not d.in_range %} out{% endif %}{% if d.in_streak %} streak{% endif %}" title="{{ d.day|short_date }}: {{ d.count }}"{% if d.count %} data-explore-day="{{ d.day.isoformat() }}"{% endif %}></span>{% endfor %}
                   {% endfor %}
                 </div>
                 <p class="legend">Less <span class="cell l0"></span><span class="cell l1"></span><span class="cell l2"></span><span class="cell l3"></span><span class="cell l4"></span> More <span class="cell l2 streak"></span> Streak</p>
@@ -259,6 +262,7 @@
                   <span class="itemvalue">{{ f.busiest_day_count }}<span>Visits</span></span>
                 </div>
                 <p class="caption">{{ f.busiest_day.strftime("%a") }}, {{ f.busiest_day|short_date }}: {{ f.busiest_day_places|join(" → ") }}</p>
+                <a class="explore-link" href="#days" data-explore-day="{{ f.busiest_day.isoformat() }}">See this day &rarr;</a>
               </div>
               <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
             </div>
@@ -356,21 +360,72 @@
           </div>
         </section>
 
-        <section id="tables">
+        {% if h.raw_sections %}
+        <section id="tables" class="stat">
           <img src="{{ url_for('static', filename='styles/imgs/background5.png') }}" class="background">
-          {% if w.total_swipes %}
-          <div class = "table-wrapper reveal">
-            <h2>All Meal Swipe Data</h2>
-            {{ swipes.to_html(classes="data", na_rep="-")|safe }}
+          <div class="container reveal">
+            <h2 class="stat-intro">All your data</h2>
+            <div class="listbox statcard">
+              <div class="listheader"><h1 class="title">Every Place</h1></div>
+              <div class="rawdata">
+                {% for section in h.raw_sections %}
+                <h3>{{ section.title }}</h3>
+                <table>
+                  <thead><tr><th>Place</th>{% for c in section.columns %}<th>{{ {"Breakfast": "Bkfst", "Dollars": "$"}.get(c, c) }}</th>{% endfor %}</tr></thead>
+                  <tbody>
+                    {% for row in section.rows %}
+                    <tr>
+                      <th scope="row"><a href="#places" data-explore-place="{{ row.place }}">{{ row.place }}</a></th>
+                      {% for c in section.columns %}
+                      {% set v = row[c] %}
+                      <td>{% if not v %}&ndash;{% elif c == "Dollars" %}${{ "%.2f"|format(v) }}{% else %}{{ v }}{% endif %}</td>
+                      {% endfor %}
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+                {% endfor %}
+              </div>
+              <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
+            </div>
           </div>
-          {% endif %}
-          {% if not w.vendors.empty %}
-          <div class = "table-wrapper reveal">
-            <h2>All Dining Dollar Data</h2>
-            {{ vendor_table_html|safe }}
-          </div>
-          {% endif %}
         </section>
+        {% endif %}
+
+        {% if h.explorer.purchases %}
+        <section id="days" class="stat explore">
+          <div class="container reveal">
+            <h2 class="stat-intro">Explore your days</h2>
+            <div class="listbox statcard" id="explore-days">
+              <div class="listheader xmonth-head">
+                <button type="button" class="xmonth-prev" aria-label="Previous month">&lsaquo;</button>
+                <h1 class="title xmonth-title"></h1>
+                <button type="button" class="xmonth-next" aria-label="Next month">&rsaquo;</button>
+              </div>
+              <div class="xmonth"></div>
+              <div class="xday-head"></div>
+              <div class="xday-list"></div>
+              <div class="xday-nav"><button type="button" class="xprev"></button><button type="button" class="xnext"></button></div>
+              <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="places" class="stat explore places">
+          <div class="container reveal">
+            <h2 class="stat-intro">Explore your places</h2>
+            <div class="listbox statcard" id="explore-places">
+              <div class="listheader"><h1 class="title">Every Visit</h1></div>
+              <div class="xchips"></div>
+              <p class="xplace-sum"></p>
+              <p class="remark xnote" hidden></p>
+              <div class="xvisit-list"></div>
+              <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
+            </div>
+          </div>
+        </section>
+        <script id="explorer-data" type="application/json">{{ {"purchases": h.explorer.purchases, "places": h.explorer.places}|tojson }}</script>
+        {% endif %}
 
         <section id = "card">
           <img src="{{ url_for('static', filename='styles/imgs/background1.png') }}" class="background">
@@ -473,5 +528,6 @@
           </div>
         </section>
         <script src="{{ url_for('static', filename='scripts/script.js') }}"></script>
+        <script src="{{ url_for('static', filename='scripts/explorer.js') }}"></script>
 </body>
 </html>

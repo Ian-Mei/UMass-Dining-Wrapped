@@ -875,3 +875,183 @@ section.harvest { background: linear-gradient(160deg, #e0892b, #9c4a12); }
     row-gap: 5px;
   }
 }
+
+/* Explore your days / Explore your places (static/scripts/explorer.js fills these in). */
+section.explore { background: linear-gradient(160deg, #3a2a6b, #1d1640); }
+section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); }
+#explore-days .xmonth-head {
+  justify-content: space-between;
+  padding: 0 12px;
+}
+#explore-days .xmonth-head .title {
+  position: static;
+  font-size: clamp(22px, 5vw, 32px);
+}
+.xmonth-head button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 34px;
+  line-height: 1;
+  padding: 0 8px;
+  z-index: 2;
+}
+.xmonth {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  width: min(100% - 24px, calc(7 * min(40px, 5vh) + 24px));
+  margin: 10px auto 4px;
+}
+.xweekday {
+  color: #979cb0;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.xcell {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 5px;
+  background: #eceef4;
+  color: #42455a;
+  cursor: pointer;
+  font: 600 11px "Asap", sans-serif;
+}
+.xcell.empty { background: transparent; }
+.xcell:disabled { cursor: default; color: #c3c6d3; }
+.xcell.l1 { background: #c6f3e6; }
+.xcell.l2 { background: #86e3c8; }
+.xcell.l3 { background: #35d8ac; color: white; }
+.xcell.l4 { background: #168f6e; color: white; }
+.xcell.sel { box-shadow: 0 0 0 2px #f2c200; }
+.xday-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 14px 4px;
+  font-weight: 700;
+  font-size: 16px;
+}
+.xsum, .xplace-sum {
+  color: #979cb0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.xplace-sum { padding: 0 14px 6px; }
+.xday-list, .xvisit-list {
+  max-height: min(220px, 28vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.xvisit-list { max-height: min(300px, 40vh); }
+.xrow {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 14px;
+  border-top: 1px solid #f0f1f5;
+  font-size: 14px;
+}
+.xtime { color: #979cb0; font-size: 12px; font-weight: 600; }
+.xplace { font-weight: 600; }
+.xtags { display: flex; gap: 4px; }
+.xtag {
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.xtag.swipe { background: #e3f8f1; color: #168f6e; }
+.xtag.dollars { background: #fff4d6; color: #a86b00; }
+.xtag.topup { background: #ede7ff; color: #6a4fd1; }
+.xdate {
+  background: #f5f6fa;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 14px 3px;
+}
+.xday-nav {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+}
+.xday-nav button, .explore-link {
+  background: none;
+  border: none;
+  color: #6a4fd1;
+  cursor: pointer;
+  font: 700 13px "Asap", sans-serif;
+  padding: 4px;
+}
+.explore-link { display: block; margin: 0 auto 8px; text-align: center; }
+.xchips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 10px 12px 8px;
+  scrollbar-width: none;
+}
+.xchip {
+  background: #eceef4;
+  border: none;
+  border-radius: 14px;
+  color: #42455a;
+  cursor: pointer;
+  flex: none;
+  font: 700 12px "Asap", sans-serif;
+  padding: 5px 11px;
+}
+.xchip.on { background: #42455a; color: white; }
+#explore-places .xnote { margin: 0 14px 8px; }
+a.listitem.explorable { color: inherit; cursor: pointer; text-decoration: none; }
+.cell[data-explore-day] { cursor: pointer; }
+
+/* All your data: one small table per section (dining halls, Blue Wall, ...), scrolling inside the card. */
+.rawdata {
+  max-height: min(460px, 62vh);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 4px 10px 10px;
+}
+.rawdata h3 {
+  color: #42455a;
+  font-size: 15px;
+  margin: 10px 4px 4px;
+  text-transform: uppercase;
+}
+.rawdata table {
+  border-collapse: collapse;
+  font-size: 12px;
+  width: 100%;
+}
+.rawdata th, .rawdata td {
+  border-bottom: 1px solid #f0f1f5;
+  padding: 5px 4px;
+  text-align: right;
+  white-space: nowrap;
+}
+.rawdata thead th {
+  color: #979cb0;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: normal;
+}
+.rawdata th[scope="row"], .rawdata thead th:first-child {
+  text-align: left;
+  white-space: normal;
+}
+.rawdata th[scope="row"] a {
+  color: #42455a;
+  font-weight: 700;
+  text-decoration: none;
+}
+.rawdata td { color: #42455a; font-variant-numeric: tabular-nums; }
+@media (max-width: 380px) {
+  .rawdata { padding: 4px 6px 10px; }
+  .rawdata table { font-size: 11px; }
+  .rawdata th, .rawdata td { padding: 5px 2px; }
+  .rawdata thead th { font-size: 9px; }
+}
