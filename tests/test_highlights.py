@@ -245,3 +245,15 @@ def test_top_ups():
 def test_no_top_up_screen_under_three():
     rows = [ycmp("CPOS Tamales", "10/07/26 01:00:00 PM"), dollars("CPOS Tamales", "10/07/26 01:00:05 PM", 1.25, 50)]
     assert highlights(rows).top_ups is None
+
+
+def test_a_topped_up_swipe_is_one_visit_everywhere():
+    rows = []
+    for d in (5, 6):
+        rows += [ycmp("CPOS Harvest Market", f"10/0{d}/26 12:00:00 PM"),
+                 dollars("CPOS Harvest Market", f"10/0{d}/26 12:00:09 PM", 4, 100 - d)]
+    rows += [ycmp("CPOS Tamales", "10/06/26 06:00:00 PM")]
+    h = highlights(rows)
+    assert [d.count for d in h.calendar.weeks[0] if d.in_range] == [1, 2]
+    assert (h.fun.busiest_day, h.fun.busiest_day_count) == (date(2026, 10, 6), 2)
+    assert h.clock.grid["Monday"][12] == 1

@@ -149,16 +149,18 @@ def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None)
     food["hour"] = food["timestamp"].dt.hour.where(food["timestamp"].dt.hour >= NIGHT_ENDS_HOUR,
                                                    food["timestamp"].dt.hour + 24)
 
-    streak = longest_streak(food["day"])
+    # A top-up is part of its swipe, not another trip, so it doesn't count as a visit.
+    visits = food[~food["is_top_up"]]
+    streak = longest_streak(visits["day"])
     return Highlights(
         plans=plan_paces(tx, pace_until, semester_end),
-        routine=top_routine(food),
+        routine=top_routine(visits),
         streak=streak,
-        calendar=calendar(food, as_of, streak),
-        clock=clock(food),
-        fun=fun_facts(food),
-        blue_wall=blue_wall(food),
-        harvest=harvest(food),
+        calendar=calendar(visits, as_of, streak),
+        clock=clock(visits),
+        fun=fun_facts(visits),
+        blue_wall=blue_wall(visits),
+        harvest=harvest(visits),
         top_ups=top_ups(food),
     )
 

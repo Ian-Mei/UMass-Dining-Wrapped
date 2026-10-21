@@ -10,7 +10,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from wrapped import ParseError, build_wrapped
 from wrapped.transactions import (
-    MAYBE_CUT_OFF_ROWS, balance_gaps, clean, count_rows, merge_rows, rows_from_pdf, transaction_count,
+    GET_SMALLEST_LIMIT, MAYBE_CUT_OFF_ROWS, balance_gaps, clean, count_rows, merge_rows, printed_date, rows_from_pdf,
+    transaction_count,
 )
 
 GET_ORIGIN = "https://get.cbord.com"
@@ -130,13 +131,15 @@ def wrapped():
 def build_from_pdfs(pdfs):
     """The Wrapped for these PDFs, and whether GET may have left rows out of them.
 
-    Two signs: a PDF as full as GET's limit (catches a whole-semester manual export), or a
-    balance that drops more than the rows explain (catches a cut window in between).
+    Two signs: a PDF as full as GET's smallest limit (catches a whole-semester manual export), or
+    a balance that drops more than the rows explain (catches a cut window in between). Plan pace
+    counts up to when the newest PDF was printed, not when it's uploaded.
     """
     per_pdf = [rows_from_pdf(pdf) for pdf in pdfs]
     rows = merge_rows(per_pdf)
-    result = build_wrapped(clean(rows))
-    maybe_cut_off = any(transaction_count(r) >= MAYBE_CUT_OFF_ROWS for r in per_pdf) or bool(balance_gaps(rows))
+    printed = [d for d in map(printed_date, pdfs) if d]
+    result = build_wrapped(clean(rows), today=max(printed, default=None))
+    maybe_cut_off = any(transaction_count(r) >= GET_SMALLEST_LIMIT for r in per_pdf) or bool(balance_gaps(rows))
     return result, maybe_cut_off
 
 

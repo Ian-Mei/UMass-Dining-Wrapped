@@ -5,7 +5,7 @@ Everything happens in memory: PDFs come in as bytes and are never written to dis
 import re
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from itertools import groupby, permutations
 
 import fitz
@@ -13,8 +13,9 @@ import pandas as pd
 
 HEADER_CELL = "Account Name:"
 # GET silently returns only the newest rows per history PDF and drops the older ones. How many
-# varies by person (we've seen 14, 17 and 21), so a PDF with this many transactions may be
-# missing its oldest ones.
+# varies by person (we've seen 14, 17 and 21).
+GET_SMALLEST_LIMIT = 14
+# A date window with this many transactions gets downloaded again in halves, well under the limit.
 MAYBE_CUT_OFF_ROWS = 10
 RAW_COLUMNS = ["account", "timestamp", "location", "amount", "balance"]
 
@@ -38,8 +39,9 @@ OLD_GRAB_N_GO_HALLS = {"Worcester", "Frank"}
 # By Fall 2026 they're "CPOS Worcester DC", with Grab 'n Go as its own "CPOS Worcester GG".
 NEW_HALL_TERMINAL = r"^CPOS (Hampshire|Worcester|Berkshire|Franklin) (DC|GG)$"
 NEW_DINING_HALLS = {"Hampshire": "Hamp", "Worcester": "Worcester", "Berkshire": "Berk", "Franklin": "Frank"}
-# Dining dollars paid at a vendor this soon after a meal swipe there topped up the swipe
-# (the order cost more than a swipe covers). In real exports it's almost always within 15s.
+# Dining dollars paid at a vendor this close to a meal swipe there topped up the swipe (the order
+# cost more than a swipe covers). In real exports the charge almost always comes 0-15s after the
+# swipe, but now and then just before it, so either side counts.
 TOP_UP_SECONDS = 60
 
 
@@ -52,6 +54,13 @@ def open_pdf(data: bytes):
         return fitz.open(stream=data, filetype="pdf")
     except Exception as e:
         raise ParseError("One of those files isn't a readable PDF.") from e
+
+
+def printed_date(data: bytes) -> date | None:
+    """When GET made this PDF, from its "Printed: October 19, 2026" line."""
+    with open_pdf(data) as doc:
+        match = re.search(r"Printed:\s*([A-Z][a-z]+ \d{1,2}, \d{4})", doc[0].get_text() if len(doc) else "")
+    return datetime.strptime(match.group(1), "%B %d, %Y").date() if match else None
 
 
 def count_rows(data: bytes) -> int:

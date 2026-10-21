@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from wrapped.transactions import ParseError, balance_gaps, clean, count_rows, parse_pdfs, parse_timestamp, rows_from_pdf
+from wrapped.transactions import ParseError, balance_gaps, clean, count_rows, printed_date, parse_pdfs, parse_timestamp, rows_from_pdf
 
 from .conftest import charge, make_history_pdf, swipe
 
@@ -138,3 +138,9 @@ def test_balance_gaps_handle_meal_plan_setup_rows():
         ["C Basic Plan", "09/02/26 08:16:44 PM", "CPOS Hampshire DC", "-1", "208"],
     ]
     assert balance_gaps(rows) == []
+
+
+def test_printed_date():
+    from datetime import date
+    assert printed_date(make_history_pdf([], printed=date(2026, 10, 19))) == date(2026, 10, 19)
+    assert printed_date(make_history_pdf([])) is None
