@@ -131,11 +131,14 @@ def display_name(place: str, hall, grab_n_go: bool) -> str:
     return name
 
 
-def build_highlights(tx: pd.DataFrame, semester: str) -> Highlights:
+def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None) -> Highlights:
     """tx is a clean transactions frame with a period column (see stats.build_wrapped)."""
     season, year = semester.split()
     semester_end = date(int(year), *SEMESTER_ENDS[season])
     as_of = tx["timestamp"].max().date()
+    # Plan pace counts up to today, so days without buying anything slow it down. Run after the
+    # semester (e.g. over winter break), it stops at the semester's end.
+    pace_until = min(today or date.today(), semester_end)
 
     food = tx[tx["kind"].isin(FOOD)].copy()
     food["name"] = [display_name(p, h, g) for p, h, g in zip(food["place"], food["hall"], food["grab_n_go"])]
@@ -148,7 +151,7 @@ def build_highlights(tx: pd.DataFrame, semester: str) -> Highlights:
 
     streak = longest_streak(food["day"])
     return Highlights(
-        plans=plan_paces(tx, as_of, semester_end),
+        plans=plan_paces(tx, pace_until, semester_end),
         routine=top_routine(food),
         streak=streak,
         calendar=calendar(food, as_of, streak),
@@ -160,13 +163,14 @@ def build_highlights(tx: pd.DataFrame, semester: str) -> Highlights:
     )
 
 
-def plan_paces(tx, as_of, semester_end) -> list:
+def plan_paces(tx, until, semester_end) -> list:
+    """Each plan's pace from its first charge up to until, projected on to semester_end."""
     plans = []
     for account, charges in tx.sort_values("timestamp").groupby("account"):
         # Skip unlimited plans, accounts mostly used for laundry, and balances that don't count down.
         if (len(charges) < MIN_PLAN_CHARGES or "unlimited" in account.lower()
                 or charges["kind"].isin(FOOD).mean() < 0.5
-                or (as_of - charges["timestamp"].iloc[-1].date()).days > MAX_PLAN_IDLE_DAYS
+                or (until - charges["timestamp"].iloc[-1].date()).days > MAX_PLAN_IDLE_DAYS
                 or not charges["balance"].iloc[-1] < charges["balance"].iloc[0]):
             continue
         is_meals = bool(charges["is_swipe"].iloc[0])
@@ -174,14 +178,14 @@ def plan_paces(tx, as_of, semester_end) -> list:
         if not used > 0:
             continue
         left = float(charges["balance"].iloc[-1])
-        per_day = used / max((as_of - charges["timestamp"].iloc[0].date()).days, 1)
+        per_day = used / max((until - charges["timestamp"].iloc[0].date()).days, 1)
 
         runs_out = None
-        days_to_end = (semester_end - as_of).days
+        days_to_end = (semester_end - until).days
         if days_to_end <= 0:
             left_at_end = left
         elif left / per_day < days_to_end:
-            runs_out, left_at_end = as_of + timedelta(days=left / per_day), 0
+            runs_out, left_at_end = until + timedelta(days=left / per_day), 0
         else:
             left_at_end = left - per_day * days_to_end
 

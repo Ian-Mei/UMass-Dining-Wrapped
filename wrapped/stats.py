@@ -127,7 +127,8 @@ def laundry_stats(tx: pd.DataFrame) -> Laundry | None:
     )
 
 
-def build_wrapped(tx: pd.DataFrame) -> Wrapped:
+def build_wrapped(tx: pd.DataFrame, today=None) -> Wrapped:
+    """today (a date) is for tests; it defaults to the real date."""
     if tx.empty:
         raise ParseError("Couldn't find any purchases in that history. Make sure it covers a semester you were on campus.")
     tx = tx.assign(period=meal_period(tx["timestamp"]))
@@ -148,7 +149,7 @@ def build_wrapped(tx: pd.DataFrame) -> Wrapped:
         total_swipes=int(swipes.loc["Total"].sum()),
         total_spent=float(tx.loc[tx["kind"].isin(["hall", "vendor"]) & ~tx["is_swipe"], "amount"].sum()),
         laundry=laundry_stats(tx),
-        highlights=build_highlights(tx, semester),
+        highlights=build_highlights(tx, semester, today),
         personality=None,
     )
     wrapped.personality = pick_personality(wrapped)

@@ -7,8 +7,10 @@ from wrapped.highlights import blue_wall_name, display_name
 from wrapped.transactions import clean
 
 
-def highlights(rows):
-    return build_wrapped(clean(rows)).highlights
+def highlights(rows, today=None):
+    tx = clean(rows)
+    # By default, run it the day of the last purchase.
+    return build_wrapped(tx, today=today or tx["timestamp"].max().date()).highlights
 
 
 def meal(location, when, account="M Unlimited DC", balance="500"):
@@ -43,6 +45,24 @@ def test_dining_dollars_running_out():
     assert plan.left == pytest.approx(40)
     assert plan.runs_out == date(2026, 10, 8)
     assert plan.left_at_end == 0
+
+
+def test_quiet_days_up_to_today_slow_the_pace():
+    # Same $160 used and $40 left as above, but run on Oct 11 after 10 days without buying:
+    # $160 over 40 days is $4 a day, so $40 lasts until Oct 21.
+    rows = [dollars("CPOS Wasabi", f"09/{d:02d}/26 12:00:00 PM", 10, 200 - 10 * (i + 1))
+            for i, d in enumerate(range(1, 31, 2))]
+    rows.append(dollars("CPOS Wasabi", "10/01/26 12:00:00 PM", 10, 40))
+    [plan] = highlights(rows, today=date(2026, 10, 11)).plans
+    assert plan.per_week == pytest.approx(4 * 7)
+    assert plan.runs_out == date(2026, 10, 21)
+
+
+def test_running_it_after_the_semester_reports_what_was_left():
+    rows = [dollars("CPOS Wasabi", f"12/{d:02d}/26 12:00:00 PM", 10, 100 - 10 * d) for d in range(1, 7)]
+    [plan] = highlights(rows, today=date(2027, 1, 10)).plans  # winter break, weeks after the last purchase
+    assert plan.runs_out is None
+    assert plan.left_at_end == pytest.approx(40)
 
 
 def test_meal_plan_with_swipes_to_spare():
