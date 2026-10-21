@@ -6,15 +6,17 @@ COLUMN_WIDTHS = [110, 130, 120, 100, 70]
 ROWS_PER_PAGE = 30
 
 
-def make_history_pdf(rows, word_by_word=False):
+def make_history_pdf(rows, word_by_word=False, printed=None):
     """Build a fake GET history PDF: a bordered table like the real (FPDF-generated) export.
 
     word_by_word draws each word as its own text object with no space characters between them,
-    which is how the real export does it.
+    which is how the real export does it. printed adds GET's "Printed: October 19, 2026" line.
     """
     doc = fitz.open()
     for start in range(0, max(len(rows), 1), ROWS_PER_PAGE):
         page = doc.new_page()
+        if printed:
+            page.insert_text((30, 40), f"Printed: {printed:%B} {printed.day}, {printed.year}", fontsize=8)
         y = 60
         for row in [HEADER, *rows[start:start + ROWS_PER_PAGE]]:
             x = 30

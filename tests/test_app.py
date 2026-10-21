@@ -3,7 +3,9 @@ from urllib.parse import unquote
 
 import pytest
 
-from app import app
+from datetime import date
+
+from app import app, build_from_pdfs
 
 from .conftest import charge, make_history_pdf, swipe
 
@@ -36,8 +38,9 @@ def test_rows_says_when_a_window_may_be_cut_off(client):
         rows = [swipe("CPOS Worcester DC", f"09/{d % 28 + 1:02d}/26 12:{d:02d}:00 PM") for d in range(n)]
         return client.post("/rows", data=make_history_pdf(rows)).get_json()
 
-    assert check(3) == {"rows": 3, "full": False}
-    assert check(17) == {"rows": 17, "full": True}
+    # GET's limit varies by person (14 rows was the smallest seen), so split well below it.
+    assert check(9) == {"rows": 9, "full": False}
+    assert check(10) == {"rows": 10, "full": True}
 
 
 def test_rows_rejects_garbage(client):
@@ -98,7 +101,7 @@ def test_saves_uploads_when_debugging(client, tmp_path, monkeypatch):
 
 def test_saves_traceback_when_parsing_crashes(client, tmp_path, monkeypatch):
     monkeypatch.setattr("app.SAVE_UPLOADS_DIR", str(tmp_path))
-    monkeypatch.setattr("app.build_wrapped", lambda tx: 1 / 0)
+    monkeypatch.setattr("app.build_wrapped", lambda tx, **kwargs: 1 / 0)
     app.config["PROPAGATE_EXCEPTIONS"] = False
     try:
         response = upload(client, make_history_pdf([swipe("WorcDC2", "March 4, 2024, 12:00PM")]))
@@ -175,3 +178,30 @@ def test_warns_when_a_pdf_may_be_cut_off(client):
 def test_bookmarklet_uses_the_public_address_behind_a_proxy(client):
     page = client.get("/", headers={"X-Forwarded-Proto": "https", "X-Forwarded-Host": "wrapped.example.com"})
     assert "https://wrapped.example.com" in unquote(page.get_data(as_text=True))
+
+
+def test_warns_when_a_balance_drops_more_than_the_purchases_explain(client):
+    rows = [
+        ["UMass Dining Dollars", "10/12/26 12:47:15 PM", "CPOS Roots Cafe", "-$11.00", "$232.50"],
+        # A $6.50 purchase GET left out happened here.
+        ["UMass Dining Dollars", "10/15/26 03:45:52 PM", "CPOS Peoples Organic Coffee", "-$6.50", "$219.50"],
+    ]
+    page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
+    assert "may be missing" in page
+
+
+def test_no_notice_for_a_busy_day_that_came_back_whole(client):
+    # A one-day window can't be split further; 12 rows is still under GET's smallest limit (14).
+    rows = [charge("CPOS Tamales", f"10/05/26 {h:02d}:00:00 PM", 1.00) for h in range(1, 13)]
+    page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
+    assert "may be missing" not in page
+
+
+def test_plan_pace_counts_up_to_when_the_pdf_was_printed():
+    # $160 used Sep 1 - Oct 1 and $40 left; printed Oct 1 but uploaded weeks later.
+    rows = [["UMass Dining Dollars", f"09/{d:02d}/26 12:00:00 PM", "CPOS Wasabi", "-$10.00", f"${200 - 10 * (i + 1)}.00"]
+            for i, d in enumerate(range(1, 31, 2))]
+    rows.append(["UMass Dining Dollars", "10/01/26 12:00:00 PM", "CPOS Wasabi", "-$10.00", "$40.00"])
+    result, _ = build_from_pdfs([make_history_pdf(rows, printed=date(2026, 10, 1))])
+    [plan] = result.highlights.plans
+    assert plan.runs_out == date(2026, 10, 8)

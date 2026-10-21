@@ -639,10 +639,14 @@ section.stat h2.stat-intro {
 
 /* Grid of colored squares: the clock (weekday x hour) and the calendar (weekday x week). */
 .heatmap {
+  /* Squares grow with the card's width, so cap them by screen height too, or a short laptop
+     screen gets a calendar taller than the window (and scroll-snap stops working). */
+  --cell: min(34px, 3.8vh);
   display: grid;
   grid-template-columns: 26px repeat(var(--cols), minmax(0, 1fr));
   gap: 3px;
-  margin: 6px 0 8px;
+  width: min(100%, calc(26px + var(--cols) * (var(--cell) + 3px)));
+  margin: 6px auto 8px;
 }
 .heatmap .axis {
   color: #979cb0;
@@ -760,4 +764,114 @@ section#home .notice {
   color: white;
   font-size: 16px;
   text-align: center;
+}
+
+/* Blue Wall and Harvest Market screens use their own colors instead of a background image. */
+section.bluewall { background: linear-gradient(160deg, #2f6fd6, #1b3f8f); }
+section.bluewall.deep { background: linear-gradient(160deg, #1b3f8f, #0d2457); }
+section.harvest { background: linear-gradient(160deg, #e0892b, #9c4a12); }
+.statcard .remark {
+  background: #f5f6fa;
+  border-left: 4px solid #f2c200;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 1.35;
+  margin: 6px 0 10px;
+  padding: 10px 12px;
+  text-align: left;
+}
+/* Blue Wall chart: one bar per restaurant, scaled to the top one. */
+.statcard .barrow {
+  display: grid;
+  grid-template-columns: 120px 1fr 28px;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+  color: #979cb0;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+.statcard .barrow .bar {
+  display: block;
+  height: 14px;
+  min-width: 6px;
+  border-radius: 7px;
+  background: #35d8ac;
+}
+.statcard .barrow b {
+  color: #42455a;
+  text-align: right;
+}
+
+/* Short screens (laptops with browser toolbars): tighten the cards so every screen still fits
+   in one window, which scroll-snap needs to move from screen to screen. */
+@media (max-height: 720px) {
+  section h2 {
+    font-size: 30px;
+  }
+  .listbox .listheader {
+    height: 90px;
+  }
+  .listbox .list .listitem .itemvalue {
+    font-size: 28px;
+  }
+  .heatmap {
+    --cell: min(34px, 3.3vh);
+  }
+  .statcard .tile {
+    padding: 5px 8px;
+  }
+  section.stat h2.stat-intro {
+    font-size: clamp(20px, 3.4vh, 30px);
+  }
+  .statcard .listheader {
+    height: 64px;
+  }
+  .statcard .big {
+    font-size: 60px;
+  }
+  .statcard .statbody {
+    padding-top: 10px;
+  }
+  .statcard .tilevalue {
+    font-size: 20px;
+  }
+  .statcard .tiles {
+    margin-bottom: 8px;
+  }
+  .listbox .list .listitem {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  #personality h1 {
+    font-size: 2rem;
+    margin: 8px;
+  }
+  #personality h2 {
+    padding: 8px;
+  }
+  #personality .persImgcontainer {
+    width: 150px;
+    height: 220px;
+  }
+  #personality .persImg {
+    width: 140px;
+  }
+  #personality p {
+    padding: 14px 24px;
+    font-size: 17px;
+  }
+}
+@media (max-height: 580px) {
+  section h2 {
+    font-size: 24px;
+  }
+  .listbox .listheader {
+    height: 64px;
+  }
+  .listbox .list {
+    padding: 10px 12px 12px;
+    row-gap: 5px;
+  }
 }

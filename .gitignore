@@ -11,3 +11,6 @@ cookies.json
 
 # Local debug copies of uploads (WRAPPED_SAVE_UPLOADS)
 debug_uploads/
+
+# Brainstorming mockups
+.superpowers/

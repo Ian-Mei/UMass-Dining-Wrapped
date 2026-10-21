@@ -28,7 +28,8 @@ app.py                  Flask routes: / (home), /import (bookmarklet landing), /
 wrapped/
   transactions.py       PDF bytes → clean DataFrame of charges (PyMuPDF: table grid + words)
   stats.py              charges → Wrapped (dining halls, vendors, laundry, totals)
-  highlights.py         plan run-out pace, routine, streak calendar, dining clock, fun facts
+  highlights.py         plan run-out pace, routine, Blue Wall, Harvest Market, top-ups, streak
+                        calendar, dining clock, fun facts
   personality.py        personality rules
   __main__.py           python -m wrapped history.pdf  (print stats for a local PDF)
 templates/              home.html, import.html, wrapped.html

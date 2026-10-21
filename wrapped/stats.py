@@ -96,7 +96,8 @@ def swipe_table(tx: pd.DataFrame) -> pd.DataFrame:
 
 
 def vendor_table(tx: pd.DataFrame) -> pd.DataFrame:
-    paid = tx[(tx["kind"] == "vendor") & ~tx["is_swipe"]]
+    # Top-ups went with a meal swipe, so they aren't a separate trip to that place.
+    paid = tx[(tx["kind"] == "vendor") & ~tx["is_swipe"] & ~tx["is_top_up"]]
     columns = ["breakfast", "lunch", "dinner", "visits", "spent"]
     if paid.empty:
         return pd.DataFrame(columns=columns)
@@ -126,7 +127,8 @@ def laundry_stats(tx: pd.DataFrame) -> Laundry | None:
     )
 
 
-def build_wrapped(tx: pd.DataFrame) -> Wrapped:
+def build_wrapped(tx: pd.DataFrame, today=None) -> Wrapped:
+    """today (a date) is for tests; it defaults to the real date."""
     if tx.empty:
         raise ParseError("Couldn't find any purchases in that history. Make sure it covers a semester you were on campus.")
     tx = tx.assign(period=meal_period(tx["timestamp"]))
@@ -134,7 +136,6 @@ def build_wrapped(tx: pd.DataFrame) -> Wrapped:
     swipes = swipe_table(tx)
     totals = swipes.loc["Total", HALL_ORDER].astype(int).sort_values(ascending=False, kind="stable")
     vendors = vendor_table(tx)
-    hall_dollars = tx.loc[(tx["kind"] == "hall") & ~tx["is_swipe"], "amount"].sum()
     semester, semester_short = semester_name(tx["timestamp"])
 
     wrapped = Wrapped(
@@ -146,9 +147,9 @@ def build_wrapped(tx: pd.DataFrame) -> Wrapped:
         hall_ranking=[(hall, int(n)) for hall, n in totals.items() if n > 0],
         vendors=vendors,
         total_swipes=int(swipes.loc["Total"].sum()),
-        total_spent=float(vendors["spent"].sum() + hall_dollars),
+        total_spent=float(tx.loc[tx["kind"].isin(["hall", "vendor"]) & ~tx["is_swipe"], "amount"].sum()),
         laundry=laundry_stats(tx),
-        highlights=build_highlights(tx, semester),
+        highlights=build_highlights(tx, semester, today),
         personality=None,
     )
     wrapped.personality = pick_personality(wrapped)

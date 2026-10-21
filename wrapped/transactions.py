@@ -4,15 +4,19 @@ Everything happens in memory: PDFs come in as bytes and are never written to dis
 """
 import re
 from collections import Counter
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import date, datetime
+from itertools import groupby, permutations
 
 import fitz
 import pandas as pd
 
 HEADER_CELL = "Account Name:"
-# GET silently returns only the newest page of rows (17 when we checked) per history PDF, so a
-# PDF with this many transactions may be missing its oldest ones.
-MAYBE_CUT_OFF_ROWS = 15
+# GET silently returns only the newest rows per history PDF and drops the older ones. How many
+# varies by person (we've seen 14, 17 and 21).
+GET_SMALLEST_LIMIT = 14
+# A date window with this many transactions gets downloaded again in halves, well under the limit.
+MAYBE_CUT_OFF_ROWS = 10
 RAW_COLUMNS = ["account", "timestamp", "location", "amount", "balance"]
 
 # Money moving between accounts, not spending.
@@ -35,6 +39,10 @@ OLD_GRAB_N_GO_HALLS = {"Worcester", "Frank"}
 # By Fall 2026 they're "CPOS Worcester DC", with Grab 'n Go as its own "CPOS Worcester GG".
 NEW_HALL_TERMINAL = r"^CPOS (Hampshire|Worcester|Berkshire|Franklin) (DC|GG)$"
 NEW_DINING_HALLS = {"Hampshire": "Hamp", "Worcester": "Worcester", "Berkshire": "Berk", "Franklin": "Frank"}
+# Dining dollars paid at a vendor this close to a meal swipe there topped up the swipe (the order
+# cost more than a swipe covers). In real exports the charge almost always comes 0-15s after the
+# swipe, but now and then just before it, so either side counts.
+TOP_UP_SECONDS = 60
 
 
 class ParseError(ValueError):
@@ -46,6 +54,13 @@ def open_pdf(data: bytes):
         return fitz.open(stream=data, filetype="pdf")
     except Exception as e:
         raise ParseError("One of those files isn't a readable PDF.") from e
+
+
+def printed_date(data: bytes) -> date | None:
+    """When GET made this PDF, from its "Printed: October 19, 2026" line."""
+    with open_pdf(data) as doc:
+        match = re.search(r"Printed:\s*([A-Z][a-z]+ \d{1,2}, \d{4})", doc[0].get_text() if len(doc) else "")
+    return datetime.strptime(match.group(1), "%B %d, %Y").date() if match else None
 
 
 def count_rows(data: bytes) -> int:
@@ -113,6 +128,62 @@ def cell_text(words, cell) -> str:
     )
 
 
+@dataclass
+class BalanceGap:
+    account: str
+    after: datetime  # the last row before the missing ones
+    missing: float   # how much the balance dropped beyond what the rows explain
+
+
+def balance_gaps(rows) -> list[BalanceGap]:
+    """Where an account's balance dropped by more than its rows explain: GET left rows out.
+
+    A balance that went up unexplained is a reload with no row of its own (e.g. Free Friday's
+    weekly swipe), not missing purchases, so only drops count.
+    """
+    entries = {}
+    for account, timestamp, _location, amount, balance in rows:
+        when, change, after = parse_timestamp(timestamp), to_number(amount), to_number(balance)
+        if when and change is not None and after is not None:
+            entries.setdefault(account, []).append((when, change, after))
+    gaps = []
+    for account in sorted(entries):
+        ordered = chain_order(entries[account])
+        for (when, _, before), (_, change, after) in zip(ordered, ordered[1:]):
+            missing = round(before + change - after, 2)
+            if missing > 0:
+                gaps.append(BalanceGap(account, when, missing))
+    return gaps
+
+
+def chain_order(entries):
+    """Sort (when, change, balance) by time. Rows in the same second come in any order (two items
+    rung up together, or the Meal Plan Office's "+0" next to a deposit), so within a second use an
+    order where each balance follows from the one before, if there is one."""
+    ordered = []
+    for _, group in groupby(sorted(entries, key=lambda e: e[0]), key=lambda e: e[0]):
+        group = list(group)
+        fallback = sorted(group, key=lambda e: -e[2])  # charges leave the higher balance first
+        candidates = permutations(group) if len(group) <= 5 else [fallback]
+        best = fallback
+        for order in candidates:
+            balance = ordered[-1][2] if ordered else order[0][2] - order[0][1]
+            if all(abs(balance_before + e[1] - e[2]) < 0.005
+                   for balance_before, e in zip([balance] + [x[2] for x in order], order)):
+                best = list(order)
+                break
+        ordered += best
+    return ordered
+
+
+def to_number(text: str):
+    """'-$6.50' -> -6.5, '+600' -> 600.0, '' -> None."""
+    try:
+        return float(re.sub(r"[^\d.+-]", "", text))
+    except ValueError:
+        return None
+
+
 def parse_pdfs(pdfs) -> pd.DataFrame:
     """Parse one or more history PDFs (bytes) into a single clean transactions frame."""
     return clean(merge_rows([rows_from_pdf(data) for data in pdfs]))
@@ -145,7 +216,8 @@ def parse_timestamp(text: str):
 def clean(rows: list[list[str]]) -> pd.DataFrame:
     """Normalize raw table rows into one row per charge.
 
-    Columns: timestamp, account, location, place, terminal, amount, balance, is_swipe, kind, hall, grab_n_go
+    Columns: timestamp, account, location, place, terminal, amount, balance, is_swipe, kind, hall, grab_n_go,
+    is_top_up
     """
     raw = pd.DataFrame(rows, columns=RAW_COLUMNS).astype(str)
     raw = raw[~raw["location"].str.contains(NOT_SPENDING, regex=True)]
@@ -172,4 +244,22 @@ def clean(rows: list[list[str]]) -> pd.DataFrame:
     tx.loc[tx["hall"].notna(), "kind"] = "hall"
     tx.loc[tx["place"].str.contains("WASHER|DRYER"), "kind"] = "laundry"
     tx.loc[tx["place"].str.contains("PRNT"), "kind"] = "printing"
-    return tx.sort_values("timestamp").reset_index(drop=True)
+    tx = tx.sort_values("timestamp").reset_index(drop=True)
+    tx["is_top_up"] = top_ups(tx)
+    return tx
+
+
+def top_ups(tx: pd.DataFrame) -> pd.Series:
+    """Which rows are dining dollars paid at a vendor within TOP_UP_SECONDS of a meal swipe there."""
+    vendor = tx["kind"] == "vendor"
+    paid = tx.loc[vendor & ~tx["is_swipe"], ["timestamp", "place"]].reset_index()
+    swipes = tx.loc[vendor & tx["is_swipe"], ["timestamp", "place"]].rename(columns={"timestamp": "swipe_time"})
+    if paid.empty or swipes.empty:
+        return pd.Series(False, index=tx.index)
+    nearest = pd.merge_asof(
+        paid, swipes, left_on="timestamp", right_on="swipe_time", by="place",
+        tolerance=pd.Timedelta(seconds=TOP_UP_SECONDS), direction="nearest",
+    )
+    is_top_up = pd.Series(False, index=tx.index)
+    is_top_up[nearest.loc[nearest["swipe_time"].notna(), "index"]] = True
+    return is_top_up

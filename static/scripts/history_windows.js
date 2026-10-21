@@ -1,10 +1,11 @@
 // Which date windows to download from GET's historyPDF.php. Used by templates/import.html,
 // and tested with `node --test tests/` (tests/history_windows.test.js).
 //
-// GET only returns the newest page of rows for a request (17 when we checked) and drops the rest
-// without saying so, so history is downloaded in short windows, and a window that comes back
-// full is downloaded again in halves. dateS is inclusive and dateE is exclusive, so back-to-back
-// windows don't overlap.
+// GET only returns the newest rows for a request and drops the rest without saying so (how many
+// varies by person; 14 was the smallest seen), so history is downloaded in short windows, and a
+// window the server calls full (see MAYBE_CUT_OFF_ROWS) is downloaded again in halves.
+// Back-to-back windows don't overlap: dateS is included and dateE isn't. (GET draws the line
+// around 8pm Eastern rather than midnight, probably UTC, which doesn't matter as they're contiguous.)
 const HistoryWindows = (() => {
   const WINDOW_DAYS = 5;
 
