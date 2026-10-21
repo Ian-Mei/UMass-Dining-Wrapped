@@ -94,15 +94,17 @@ const Explorer = (() => {
     const dayList = daysCard.querySelector(".xday-list");
     const prevDay = daysCard.querySelector(".xprev");
     const nextDay = daysCard.querySelector(".xnext");
-    let shown = parseDay(days[days.length - 1]);
-    let selected = days[days.length - 1];
+    // Open on their busiest day (gold on the map), or else the latest one.
+    let selected = byDay.has(data.busiest) ? data.busiest : days[days.length - 1];
+    let shown = parseDay(selected);
 
     const drawMonth = () => {
       monthTitle.textContent = `${MONTHS[shown.getMonth()]} ${shown.getFullYear()}`;
       grid.replaceChildren(...WEEKDAYS.map((d) => el("span", "xweekday", d[0])));
       for (const day of monthCells(shown.getFullYear(), shown.getMonth())) {
         if (!day) { grid.append(el("span", "xcell empty")); continue; }
-        const cell = el("button", `xcell l${level(visits[day])}${day === selected ? " sel" : ""}`, String(parseDay(day).getDate()));
+        const busiest = day === data.busiest ? " busiest" : "";
+        const cell = el("button", `xcell l${level(visits[day])}${busiest}${day === selected ? " sel" : ""}`, String(parseDay(day).getDate()));
         cell.type = "button";
         cell.disabled = !byDay.has(day);
         cell.addEventListener("click", () => selectDay(day));
@@ -124,6 +126,12 @@ const Explorer = (() => {
       drawMonth();
     };
 
+    if (data.busiest) {
+      const note = daysCard.querySelector(".xbusiest-note");
+      note.replaceChildren(el("span", "xgold"), document.createTextNode(` Gold: your busiest day (${dayLabel(data.busiest)})`));
+      note.hidden = false;
+    }
+
     daysCard.querySelector(".xmonth-prev").addEventListener("click", () => {
       shown = new Date(shown.getFullYear(), shown.getMonth() - 1, 1);
       drawMonth();
@@ -143,10 +151,12 @@ const Explorer = (() => {
     const note = placesCard.querySelector(".xnote");
     const visitList = placesCard.querySelector(".xvisit-list");
 
+    // Returns false (and changes nothing) if there's no such place, rather than showing another one.
     const selectPlace = (name) => {
-      const place = data.places.find((p) => p.name === name) || data.places[0];
+      const place = data.places.find((p) => p.name === name);
+      if (!place) return false;
       for (const chip of chips.children) chip.classList.toggle("on", chip.dataset.place === place.name);
-      const theirs = purchases.filter((p) => p.place === place.name);
+      const theirs = purchases.filter((p) => p.spot === place.name);
       const spent = totals(theirs);
       summary.textContent = `${spent} over ${place.visits} visit${place.visits === 1 ? "" : "s"}`;
       note.textContent = place.note || "";
@@ -154,11 +164,16 @@ const Explorer = (() => {
       const rows = [];
       for (const [day, list] of groupByDay(theirs)) {
         rows.push(el("div", "xdate", dayLabel(day)));
-        for (const p of list) rows.push(purchaseRow(p, false));
+        // Only name the place when it's more specific than the one picked ("Worcester Grab 'n Go").
+        for (const p of list) rows.push(purchaseRow(p, p.place !== p.spot));
       }
       visitList.replaceChildren(...rows);
       visitList.scrollTop = 0;
-      chips.querySelector(".on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      // Scroll just the row of buttons to the picked one. (scrollIntoView would scroll the whole
+      // page too, which on load jumps past the rest of the Wrapped.)
+      const on = chips.querySelector(".on");
+      chips.scrollLeft = on.offsetLeft - chips.offsetLeft - 12;
+      return true;
     };
 
     for (const place of data.places) {
@@ -170,16 +185,13 @@ const Explorer = (() => {
     }
     if (data.places.length) selectPlace(data.places[0].name);
 
-    // Links from the other screens: "See this day", "See every visit", streak calendar squares.
+    // "See every visit" links from the other screens. (Days aren't linked to: jumping ahead to
+    // Explore your days would skip the screens in between.)
     document.addEventListener("click", (event) => {
-      const link = event.target.closest("[data-explore-day], [data-explore-place]");
+      const link = event.target.closest("[data-explore-place]");
       if (!link) return;
       event.preventDefault();
-      if (link.dataset.exploreDay) {
-        selectDay(link.dataset.exploreDay);
-        document.getElementById("days").scrollIntoView({ behavior: "smooth" });
-      } else {
-        selectPlace(link.dataset.explorePlace);
+      if (selectPlace(link.dataset.explorePlace)) {
         document.getElementById("places").scrollIntoView({ behavior: "smooth" });
       }
     });

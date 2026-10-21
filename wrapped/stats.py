@@ -5,11 +5,10 @@ import pandas as pd
 
 from .highlights import Highlights, build_highlights, display_name
 from .personality import Personality, pick_personality
-from .transactions import ParseError
+from .transactions import GRAB_N_GO_HALLS, ParseError
 
 HALL_ORDER = ["Hamp", "Worcester", "Berk", "Frank"]
 LATE_NIGHT_HALLS = {"Worcester", "Berk"}
-GRAB_N_GO_HALLS = {"Worcester", "Frank"}
 
 SWIPE_ROWS = ["Breakfast", "Lunch", "Dinner", "Late_Night", "GrabNGo", "Total"]
 

@@ -924,7 +924,23 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
 .xcell.l2 { background: #86e3c8; }
 .xcell.l3 { background: #35d8ac; color: white; }
 .xcell.l4 { background: #168f6e; color: white; }
-.xcell.sel { box-shadow: 0 0 0 2px #f2c200; }
+.xcell.sel { box-shadow: 0 0 0 2px #42455a; }
+/* Their busiest day (the one in Fun Facts). */
+.xcell.busiest { background: #f2c200; color: #42455a; }
+.xbusiest-note {
+  color: #979cb0;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 2px 14px 0;
+  text-align: center;
+}
+.xgold {
+  background: #f2c200;
+  border-radius: 3px;
+  display: inline-block;
+  height: 10px;
+  width: 10px;
+}
 .xday-head {
   display: flex;
   justify-content: space-between;
@@ -1006,7 +1022,6 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
 .xchip.on { background: #42455a; color: white; }
 #explore-places .xnote { margin: 0 14px 8px; }
 a.listitem.explorable { color: inherit; cursor: pointer; text-decoration: none; }
-.cell[data-explore-day] { cursor: pointer; }
 
 /* All your data: one small table per section (dining halls, Blue Wall, ...), scrolling inside the card. */
 .rawdata {
@@ -1054,4 +1069,16 @@ a.listitem.explorable { color: inherit; cursor: pointer; text-decoration: none; 
   .rawdata table { font-size: 11px; }
   .rawdata th, .rawdata td { padding: 5px 2px; }
   .rawdata thead th { font-size: 9px; }
+}
+/* Explore your days on short screens: a smaller map and day list so the card still fits. */
+@media (max-height: 720px) {
+  .xmonth {
+    gap: 3px;
+    width: min(100% - 24px, calc(7 * min(40px, 4vh) + 18px));
+    margin: 6px auto 2px;
+  }
+  .xday-head { padding: 4px 14px 2px; }
+  .xday-list { max-height: 21vh; }
+  .xbusiest-note { margin-top: 0; }
+  .xday-nav { padding: 2px 10px; }
 }

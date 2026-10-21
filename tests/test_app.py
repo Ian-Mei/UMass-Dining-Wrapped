@@ -212,6 +212,7 @@ def test_results_page_has_the_raw_data_and_the_explorer(client):
     page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
     assert 'id="days"' in page and 'id="places"' in page
     assert 'id="explorer-data"' in page and '"place": "Tamales"' in page
-    assert 'data-explore-day="2026-09-14"' in page  # busiest day, and a streak calendar square
+    assert "data-explore-day" not in page  # no jumping ahead to a day; it would skip screens
+    assert '"busiest": "2026-09-14"' in page  # shown in gold on the month map instead
     assert 'data-explore-place="Tamales"' in page  # from the Blue Wall reveal
     assert "All your data" in page and "Every Place" in page

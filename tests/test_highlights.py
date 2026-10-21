@@ -335,10 +335,10 @@ def test_explorer_lists_every_food_purchase():
     ]
     purchases = highlights(rows).explorer.purchases
     assert purchases == [
-        {"day": "2026-09-14", "time": "12:30 PM", "place": "Star Ginger", "swipes": 1, "dollars": 0, "top_up": False},
-        {"day": "2026-09-14", "time": "12:41 PM", "place": "Harvest Market", "swipes": 2, "dollars": 0, "top_up": False},
-        {"day": "2026-09-14", "time": "12:41 PM", "place": "Harvest Market", "swipes": 0, "dollars": 3.0, "top_up": True},
-        {"day": "2026-09-14", "time": "1:10 AM", "place": "Worcester Grab 'n Go", "swipes": 1, "dollars": 0, "top_up": False},
+        {"day": "2026-09-14", "time": "12:30 PM", "place": "Star Ginger", "spot": "Star Ginger", "swipes": 1, "dollars": 0, "top_up": False},
+        {"day": "2026-09-14", "time": "12:41 PM", "place": "Harvest Market", "spot": "Harvest Market", "swipes": 2, "dollars": 0, "top_up": False},
+        {"day": "2026-09-14", "time": "12:41 PM", "place": "Harvest Market", "spot": "Harvest Market", "swipes": 0, "dollars": 3.0, "top_up": True},
+        {"day": "2026-09-14", "time": "1:10 AM", "place": "Worcester Grab 'n Go", "spot": "Worcester", "swipes": 1, "dollars": 0, "top_up": False},
     ]
 
 
@@ -384,12 +384,43 @@ def test_raw_data_sections():
     assert list(halls) == ["Worcester", "Hamp"]
     assert halls["Worcester"] == {"place": "Worcester", "Breakfast": 1, "Lunch": 0, "Dinner": 0, "Late night": 1,
                                   "Grab 'n Go": 1, "Swipes": 3, "Dollars": 0}
-    assert halls["Hamp"]["Dollars"] == pytest.approx(12)
+    # Meal columns count visits of any kind: paying with dollars at Hamp is a dinner visit.
+    assert (halls["Hamp"]["Dinner"], halls["Hamp"]["Swipes"], halls["Hamp"]["Dollars"]) == (1, 0, pytest.approx(12))
     [tamales] = sections["Blue Wall"]["rows"]
-    assert (tamales["place"], tamales["Lunch"], tamales["Swipes"], tamales["Dollars"]) == ("Tamales", 2, 2, 1.5)
+    # One lunch visit (2 swipes, plus a top-up that goes with them).
+    assert (tamales["place"], tamales["Lunch"], tamales["Swipes"], tamales["Dollars"]) == ("Tamales", 1, 2, 1.5)
     assert "Late night" not in tamales
-    assert sections["Everywhere else"]["rows"][0]["place"] == "Peet's Coffee & Tea"
+    [peets] = sections["Everywhere else"]["rows"]
+    assert (peets["place"], peets["Breakfast"], peets["Swipes"], peets["Dollars"]) == ("Peet's Coffee & Tea", 1, 0, 4.25)
     # The sections add up to the Wrapped's totals.
     all_rows = [r for s in sections.values() for r in s["rows"]]
     assert sum(r["Swipes"] for r in all_rows) == w.total_swipes
     assert sum(r["Dollars"] for r in all_rows) == pytest.approx(w.total_spent)
+
+
+def test_explorer_counts_a_dining_halls_grab_n_go_as_the_hall():
+    rows = [ycmp("CPOS Franklin DC", "10/05/26 12:00:00 PM"), ycmp("CPOS Franklin GG", "10/06/26 12:00:00 PM"),
+            ycmp("CPOS Franklin DC", "10/07/26 06:00:00 PM")]
+    places = highlights(rows).explorer.places
+    assert [(p["name"], p["visits"]) for p in places] == [("Frank", 3)]
+
+
+def test_pattern_note_on_an_even_split():
+    rows = [ycmp("CPOS Tamales", f"09/{d:02d}/26 06:00:00 PM") for d in (14, 15, 21, 22, 28, 29)]  # 3 Mon, 3 Tue
+    assert highlights(rows).explorer.places[0]["note"] == "Mostly Mondays and Tuesdays, usually around dinner."
+
+
+def test_harvest_market_link_uses_the_name_in_the_data():
+    rows = [ycmp("CPOS HARVEST MARKET", f"10/0{d}/26 12:00:00 PM") for d in range(1, 6)]
+    h = highlights(rows)
+    assert h.harvest.place == "HARVEST MARKET"
+    assert h.harvest.place in [p["name"] for p in h.explorer.places]
+
+
+def test_raw_data_grab_n_go_matches_the_swipe_table():
+    # Grab 'n Go only gets its own count at Worcester and Frank, in the Wrapped and the raw data alike.
+    rows = [ycmp("CPOS Hampshire GG", "10/05/26 12:00:00 PM"), ycmp("CPOS Hampshire DC", "10/06/26 12:00:00 PM")]
+    w = build_wrapped(clean(rows), today=date(2026, 10, 6), history=account_history(rows))
+    [hamp] = w.highlights.raw_sections[0]["rows"]
+    assert (hamp["Lunch"], hamp["Grab 'n Go"]) == (2, 0)
+    assert w.swipes.loc["Lunch", "Hamp"] == 2
