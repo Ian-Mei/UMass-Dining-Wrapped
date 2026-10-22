@@ -10,7 +10,10 @@ class Personality:
 
 
 CONNOISSEUR = Personality("Connoisseur", "connoisseur", "You've went to ALOT of dining vendors this semester. Honestly good for you! idk if i could do that like how do you go to so many places.")
-FRANK_ENJOYER = Personality("Frank Enjoyer", "frankEnjoyer", "So you like frank huh.")
+FRANK_FANATIC = Personality("Frank Fanatic", "frankFanatic", "So you like frank huh.")
+WORCESTER_WARRIOR = Personality("Worcester Warrior", "worcesterWarrior", "Worcester is basically your second dorm at this point. Respect.")
+BERK_BEAST = Personality("Berk Beast", "berkBeast", "I know you be tearing it up at Berk Parties")
+HAMP_HEAD = Personality("Hamp Head", "hampHead", "A true Hamp loyalist. The vibes are just better there.")
 BIG_SPENDER = Personality("Big Spender", "bigSpender", "You've spent ALOT of money this semester on blue wall. I really don't this the dining hall food is that bad")
 CALORIE_CONSUMER = Personality("Calorie Consumer", "calorieConsumer", "So you really really like dining hall food. You've been there so many times you can practically live there.")
 VOYAGER = Personality("Voyager", "voyager", "You love every dining hall huh. You're probably a little indecisive, or just want to share your love to every dining hall. You must also walk a shit ton holy god.")
@@ -20,6 +23,12 @@ VAMPIRE = Personality("Vampire", "vampire", "Now you love the late night and wai
 BELLA_HADID = Personality("Bella Hadid", "bellaHadid", "You barely touched your meal plan this semester. Either you're living that model life or you've been surviving on iced coffee and vibes. Eat something bestie.")
 AVERAGE_JOE = Personality("Average Joe", "averageJoe", "You're just an average umass dining enjoyer, nothing to be ashamed of. I didn't make that many personalties and its kinda hard to get some of them so my fault. But maybe you'll get a different personality next semester :p.")
 
+
+# At least this share of all their meal swipes at one dining hall gets its personality, once
+# there are enough swipes for it to mean something.
+HALL_LOYALTY_SHARE = 0.9
+HALL_LOYALTY_MIN_SWIPES = 20
+HALL_PERSONALITIES = {"Worcester": WORCESTER_WARRIOR, "Berk": BERK_BEAST, "Hamp": HAMP_HEAD, "Frank": FRANK_FANATIC}
 
 # Fewer meal swipes a week than this, on average, makes a Bella Hadid. Other plans can't be one,
 # and neither can a plan too small to reach it (a 65-meal plan is about 4 a week).
@@ -41,8 +50,9 @@ def pick_personality(wrapped) -> Personality:
 
     if len(wrapped.vendors) > 15:
         return CONNOISSEUR
-    if total["Frank"] > 125:
-        return FRANK_ENJOYER
+    for hall, personality in HALL_PERSONALITIES.items():
+        if wrapped.total_swipes >= HALL_LOYALTY_MIN_SWIPES and total[hall] >= HALL_LOYALTY_SHARE * wrapped.total_swipes:
+            return personality
     if wrapped.total_spent > 250:
         return BIG_SPENDER
     if wrapped.total_swipes > 300:

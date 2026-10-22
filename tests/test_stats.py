@@ -3,7 +3,8 @@ from datetime import date, datetime, timedelta
 import pytest
 
 from wrapped import ParseError, build_wrapped
-from wrapped.personality import AVERAGE_JOE, BELLA_HADID, BIG_SPENDER, QUICK_EATER
+from wrapped.personality import (AVERAGE_JOE, BELLA_HADID, BERK_BEAST, BIG_SPENDER, FRANK_FANATIC, HAMP_HEAD,
+                                 QUICK_EATER, WORCESTER_WARRIOR)
 from wrapped.transactions import clean
 
 from .conftest import charge, swipe
@@ -99,8 +100,23 @@ def test_personality_rules():
     big_spender = [charge("Wasabi 1", f"March {d}, 2024, 12:00PM", 20.00) for d in range(1, 15)]
     assert wrapped_from(big_spender).personality == BIG_SPENDER
 
-    grab_n_go = [swipe("FrankDC1", f"March {d % 28 + 1}, 2024, 1:{d % 60:02d}PM") for d in range(101)]
+    # Split between Frank's and Worcester's, so it isn't 90% at one hall.
+    grab_n_go = [swipe("FrankDC1" if d % 2 else "CPOS Worcester GG", f"March {d % 28 + 1}, 2024, 1:{d % 60:02d}PM") for d in range(101)]
     assert wrapped_from(grab_n_go).personality == QUICK_EATER
+
+
+@pytest.mark.parametrize("hall, expected", [
+    ("Worcester DC", WORCESTER_WARRIOR), ("Berkshire DC", BERK_BEAST), ("Hampshire DC", HAMP_HEAD), ("Franklin DC", FRANK_FANATIC),
+])
+def test_hall_loyalty_personalities(hall, expected):
+    first = datetime(2026, 9, 7, 12)
+    at = lambda place, d: swipe(f"CPOS {place}", (first + timedelta(days=d)).strftime("%m/%d/%y %I:%M:%S %p"))
+    other = "Tamales" if hall != "Worcester DC" else "Franklin DC"
+    nine_in_ten = [at(hall, d) for d in range(27)] + [at(other, d + 27) for d in range(3)]
+    assert wrapped_from(nine_in_ten).personality == expected
+    eight_in_ten = [at(hall, d) for d in range(24)] + [at(other, d + 24) for d in range(6)]
+    assert wrapped_from(eight_in_ten).personality != expected
+    assert wrapped_from(nine_in_ten[:19]).personality != expected  # too few swipes to tell
 
 
 @pytest.mark.parametrize("account, per_week, expected", [
@@ -114,7 +130,8 @@ def test_personality_rules():
 ])
 def test_bella_hadid_eats_less_than_their_plan_expects(account, per_week, expected):
     first = datetime(2026, 9, 7, 8)  # a Monday
-    rows = [swipe("CPOS Hampshire DC", (first + timedelta(weeks=w, days=d % 7, hours=d // 7 * 4)).strftime("%m/%d/%y %I:%M:%S %p"), account)
+    rows = [swipe("CPOS Hampshire DC" if w % 2 else "CPOS Berkshire DC",  # not 90% at one hall
+                  (first + timedelta(weeks=w, days=d % 7, hours=d // 7 * 4)).strftime("%m/%d/%y %I:%M:%S %p"), account)
             for w in range(10) for d in range(per_week)]
     w = build_wrapped(clean(rows), today=date(2026, 11, 16))  # 10 weeks after the first swipe
     assert w.personality == expected
