@@ -16,7 +16,7 @@ BERK_BEAST = Personality("Berk Beast", "berkBeast", "I know you be tearing it up
 HAMP_HEAD = Personality("Hamp Head", "hampHead", "A true Hamp loyalist. The vibes are just better there.")
 BIG_SPENDER = Personality("Big Spender", "bigSpender", "You've spent ALOT of money this semester on blue wall. I really don't this the dining hall food is that bad")
 CALORIE_CONSUMER = Personality("Calorie Consumer", "calorieConsumer", "So you really really like dining hall food. You've been there so many times you can practically live there.")
-VOYAGER = Personality("Voyager", "voyager", "You love every dining hall huh. You're probably a little indecisive, or just want to share your love to every dining hall. You must also walk a shit ton holy god.")
+AVATAR = Personality("Avatar", "avatar", "Master of all four dining halls. You split your swipes between Worcester, Hamp, Berk and Frank so evenly you basically keep the balance of the dining world. You must also walk a shit ton holy god.")
 QUICK_EATER = Personality("Quick Eater", "quickEater", "Either you're always rushing to class, or just hate finding a seat at the dining hall, you just love that grab n go. It is really good though tbh. Frank fil a chicken sanwiches are soooo good.")
 EARLY_BIRD = Personality("Early Bird", "earlyBird", "You probrobly go to sleep at 10 every night. Good for you. I personally could never but whatever get that bag. Or you just get no sleep at all. Probably the latter.")
 VAMPIRE = Personality("Vampire", "vampire", "Now you love the late night and waiting in line forever for some medicore food. Unless its the perogis. Or the sweet n sour chicken. Or honestly its not that bad but the lines make it bad. Why you up eating anyway go to sleep.")
@@ -44,11 +44,24 @@ def bella_hadid(wrapped) -> bool:
     return wrapped.meals_per_week < threshold
 
 
+# Each dining hall within this of an even 25% share of their dining hall swipes makes an Avatar.
+AVATAR_SHARE_RANGE = 0.05
+DINING_HALLS = ["Worcester", "Hamp", "Berk", "Frank"]
+
+
+def avatar(total) -> bool:
+    halls = sum(total[hall] for hall in DINING_HALLS)
+    if halls < HALL_LOYALTY_MIN_SWIPES:
+        return False
+    even = 1 / len(DINING_HALLS)
+    return all(abs(total[hall] / halls - even) <= AVATAR_SHARE_RANGE + 1e-9 for hall in DINING_HALLS)
+
+
 def pick_personality(wrapped) -> Personality:
     swipes = wrapped.swipes.fillna(0)
     total = swipes.loc["Total"]
 
-    if len(wrapped.vendors) > 15:
+    if wrapped.places_tried > 15:
         return CONNOISSEUR
     for hall, personality in HALL_PERSONALITIES.items():
         if wrapped.total_swipes >= HALL_LOYALTY_MIN_SWIPES and total[hall] >= HALL_LOYALTY_SHARE * wrapped.total_swipes:
@@ -57,8 +70,8 @@ def pick_personality(wrapped) -> Personality:
         return BIG_SPENDER
     if wrapped.total_swipes > 300:
         return CALORIE_CONSUMER
-    if all(total[hall] > 40 for hall in ["Worcester", "Hamp", "Berk", "Frank"]):
-        return VOYAGER
+    if avatar(total):
+        return AVATAR
     if swipes.loc["GrabNGo", "Worcester"] + swipes.loc["GrabNGo", "Frank"] > 100:
         return QUICK_EATER
     if swipes.loc["Breakfast"].sum() > 100:

@@ -38,6 +38,7 @@ class Wrapped:
     vendors: pd.DataFrame
     total_swipes: int
     total_spent: float
+    places_tried: int  # food places they swiped or paid at; a dining hall (with its Grab 'n Go) is one place
     meal_plan: str | None          # "YCMP" or "Unlimited", from the account they swiped with most
     meals_per_week: float | None   # total_swipes over the weeks since their first swipe
     plan_meals_per_week: float | None  # what their plan allows over the same weeks; None if not capped
@@ -83,6 +84,11 @@ def swipe_column(visits: pd.DataFrame, late_night: bool, grab_n_go: bool) -> dic
 
 def vendor_name(place: str) -> str:
     return display_name(place, None, False)
+
+
+def places_tried(tx: pd.DataFrame) -> int:
+    food = tx[tx["kind"].isin(["hall", "vendor"])]
+    return food["hall"].where(food["hall"].notna(), food["place"].map(vendor_name)).nunique()
 
 
 def swipe_table(tx: pd.DataFrame) -> pd.DataFrame:
@@ -196,6 +202,7 @@ def build_wrapped(tx: pd.DataFrame, today=None, history=None) -> Wrapped:
         hall_ranking=[(hall, int(n)) for hall, n in totals.items() if n > 0],
         vendors=vendors,
         total_swipes=total_swipes,
+        places_tried=places_tried(tx),
         total_spent=float(tx.loc[tx["kind"].isin(["hall", "vendor"]) & ~tx["is_swipe"], "amount"].sum()),
         meal_plan=meal_plan(account),
         meals_per_week=meals_per_week(tx, total_swipes, semester, today),

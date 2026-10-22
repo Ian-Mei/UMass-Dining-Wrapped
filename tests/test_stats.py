@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 import pytest
 
 from wrapped import ParseError, build_wrapped
-from wrapped.personality import (AVERAGE_JOE, BELLA_HADID, BERK_BEAST, BIG_SPENDER, FRANK_FANATIC, HAMP_HEAD,
+from wrapped.personality import (AVATAR, AVERAGE_JOE, BELLA_HADID, BERK_BEAST, BIG_SPENDER, CONNOISSEUR, FRANK_FANATIC, HAMP_HEAD,
                                  QUICK_EATER, WORCESTER_WARRIOR)
 from wrapped.transactions import clean
 
@@ -140,6 +140,31 @@ def test_bella_hadid_eats_less_than_their_plan_expects(account, per_week, expect
 def test_no_bella_hadid_in_the_first_two_weeks():
     rows = [swipe("CPOS Hampshire DC", "09/07/26 12:00:00 PM", "E Unlimited 250")]
     assert build_wrapped(clean(rows), today=date(2026, 9, 18)).personality == AVERAGE_JOE
+
+
+def test_connoisseur_counts_every_food_place_swiped_or_paid_at():
+    rows = [swipe("CPOS Worcester DC", "10/05/26 12:00:00 PM"), swipe("CPOS Worcester GG", "10/05/26 06:00:00 PM"),  # one place
+            swipe("CPOS Hampshire DC", "10/06/26 12:00:00 PM"), charge("CPOS Franklin DC", "10/06/26 06:00:00 PM", 12),
+            swipe("CPOS Tamales", "10/07/26 12:00:00 PM", account="T YCMP Commuter 155")]
+    rows += [charge(f"CPOS Cafe {chr(65 + n)}", f"10/{8 + n:02d}/26 09:00:00 AM", 4) for n in range(12)]
+    assert wrapped_from(rows).places_tried == 16
+    assert wrapped_from(rows).personality == CONNOISSEUR
+    assert wrapped_from(rows[:-1]).personality != CONNOISSEUR  # 15 isn't more than 15
+
+
+def hall_swipes(counts):
+    """{hall location: n} -> n swipes there, one a day from Sep 7 2026."""
+    first, rows = datetime(2026, 9, 7, 12), []
+    for hall, n in counts.items():
+        rows += [swipe(f"CPOS {hall}", (first + timedelta(days=len(rows))).strftime("%m/%d/%y %I:%M:%S %p")) for _ in range(n)]
+    return rows
+
+
+def test_avatar_splits_swipes_evenly_between_the_dining_halls():
+    # 30% / 25% / 25% / 20% of 40 is still even enough; 32.5% isn't.
+    assert wrapped_from(hall_swipes({"Worcester DC": 12, "Hampshire DC": 10, "Berkshire DC": 10, "Franklin DC": 8})).personality == AVATAR
+    assert wrapped_from(hall_swipes({"Worcester DC": 13, "Hampshire DC": 10, "Berkshire DC": 10, "Franklin DC": 7})).personality != AVATAR
+    assert wrapped_from(hall_swipes({"Worcester DC": 4, "Hampshire DC": 4, "Berkshire DC": 4, "Franklin DC": 4})).personality != AVATAR  # too few
 
 
 def test_no_purchases_is_an_error():
