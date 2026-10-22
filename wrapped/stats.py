@@ -5,11 +5,9 @@ import pandas as pd
 
 from .highlights import Highlights, build_highlights, display_name
 from .personality import Personality, pick_personality
-from .transactions import ParseError
+from .transactions import GRAB_N_GO_HALLS, LATE_NIGHT_HALLS, ParseError
 
 HALL_ORDER = ["Hamp", "Worcester", "Berk", "Frank"]
-LATE_NIGHT_HALLS = {"Worcester", "Berk"}
-GRAB_N_GO_HALLS = {"Worcester", "Frank"}
 
 SWIPE_ROWS = ["Breakfast", "Lunch", "Dinner", "Late_Night", "GrabNGo", "Total"]
 
@@ -66,7 +64,6 @@ def semester_name(timestamps: pd.Series) -> tuple[str, str]:
 def swipe_column(visits: pd.DataFrame, late_night: bool, grab_n_go: bool) -> dict:
     # Counts swipes, not rows: GET sometimes takes 2 in one row (e.g. paying for a friend).
     is_grab = visits["grab_n_go"] if grab_n_go else pd.Series(False, index=visits.index)
-    visits = visits.assign(amount=visits["amount"].fillna(1))  # an unreadable amount is still a swipe
     periods = visits[~is_grab].groupby("period")["amount"].sum()
     return {
         "Breakfast": int(periods.get("Breakfast", 0)),
@@ -84,7 +81,8 @@ def vendor_name(place: str) -> str:
 
 
 def swipe_table(tx: pd.DataFrame) -> pd.DataFrame:
-    halls = tx[tx["kind"] == "hall"]
+    # Only swipes: dining dollars paid at a hall count toward money spent, not meal swipes.
+    halls = tx[(tx["kind"] == "hall") & tx["is_swipe"]]
     columns = {
         hall: swipe_column(halls[halls["hall"] == hall], hall in LATE_NIGHT_HALLS, hall in GRAB_N_GO_HALLS)
         for hall in HALL_ORDER

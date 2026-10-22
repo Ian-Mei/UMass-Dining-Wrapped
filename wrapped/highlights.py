@@ -8,6 +8,8 @@ from datetime import date, time, timedelta
 
 import pandas as pd
 
+from .transactions import GRAB_N_GO_HALLS, LATE_NIGHT_HALLS
+
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 FOOD = ["hall", "vendor"]
 # Roughly the last day of finals, for "will your plan last?" projections.
@@ -118,6 +120,8 @@ class Highlights:
     blue_wall: "BlueWall | None"
     harvest: "Harvest | None"
     top_ups: "TopUps | None"
+    explorer: "Explorer"
+    raw_sections: list
 
 
 def display_name(place: str, hall, grab_n_go: bool) -> str:
@@ -144,7 +148,9 @@ def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None,
     pace_until = min(today or date.today(), semester_end)
 
     food = tx[tx["kind"].isin(FOOD)].copy()
-    food["name"] = [display_name(p, h, g) for p, h, g in zip(food["place"], food["hall"], food["grab_n_go"])]
+    # dtype=object so the column is still text when there's no food at all (only laundry, say).
+    food["name"] = pd.Series([display_name(p, h, g) for p, h, g in zip(food["place"], food["hall"], food["grab_n_go"])],
+                             index=food.index, dtype=object)
     food["spot"] = food["hall"].where(food["hall"].notna(), food["name"])
     night = food["timestamp"] - pd.Timedelta(hours=NIGHT_ENDS_HOUR)
     food["day"] = night.dt.date
@@ -165,6 +171,8 @@ def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None,
         blue_wall=blue_wall(visits),
         harvest=harvest(visits),
         top_ups=top_ups(food),
+        explorer=explorer(food, swipes_too=bool(food.loc[food["is_swipe"], "account"].str.contains("YCMP", case=False).any())),
+        raw_sections=raw_sections(food),
     )
 
 
@@ -368,6 +376,7 @@ class BlueWallSpot:
     name: str
     swipes: int
     share: float  # swipes as a fraction of the top spot's, for the bar chart
+    place: str = ""  # the same place as the explorer names it (GET's spelling, e.g. "Yum Bakery")
 
 
 @dataclass
@@ -390,6 +399,7 @@ class BlueWall:
 class Harvest:
     swipes: int
     remark: str
+    place: str  # as Explore your places names it, for the "See every visit" link
 
 
 @dataclass
@@ -432,16 +442,17 @@ def vendor_swipes(food):
 
 
 def blue_wall(food) -> BlueWall | None:
-    swipes = vendor_swipes(food).assign(spot=lambda f: f["name"].map(blue_wall_name)).dropna(subset=["spot"])
+    swipes = vendor_swipes(food).assign(blue_wall=lambda f: f["name"].map(blue_wall_name)).dropna(subset=["blue_wall"])
     total = int(swipes["amount"].sum())
     if total < MIN_BLUE_WALL_SWIPES:
         return None
-    counts = by_count_then_recent(swipes, "spot", swipes=True)
+    counts = by_count_then_recent(swipes, "blue_wall", swipes=True)
     most = counts[0][1]
-    spots = [BlueWallSpot(name, n, n / most) for name, n in counts]
+    places = swipes.groupby("blue_wall")["spot"].agg(lambda spots: spots.value_counts().index[0])
+    spots = [BlueWallSpot(name, n, n / most, places[name]) for name, n in counts]
     top = spots[0].name
     return BlueWall(spots=spots, total=total,
-                    remark=remark(REMARKS[top], spots[0].swipes, int((swipes["spot"] == top).sum())))
+                    remark=remark(REMARKS[top], spots[0].swipes, int((swipes["blue_wall"] == top).sum())))
 
 
 def harvest(food) -> Harvest | None:
@@ -450,7 +461,7 @@ def harvest(food) -> Harvest | None:
     n = int(there["amount"].sum())
     if n < MIN_HARVEST_SWIPES:
         return None
-    return Harvest(swipes=n, remark=remark(HARVEST_REMARK, n, len(there)))
+    return Harvest(swipes=n, remark=remark(HARVEST_REMARK, n, len(there)), place=there["spot"].value_counts().index[0])
 
 
 def top_ups(food) -> TopUps | None:
@@ -462,3 +473,126 @@ def top_ups(food) -> TopUps | None:
         for name, n in by_count_then_recent(ups, "name")[:TOP_UP_PLACES_SHOWN]
     ]
     return TopUps(count=len(ups), total=float(ups["amount"].sum()), places=places)
+
+
+# Explore your days / Explore your places (the last two screens; drawn by static/scripts/explorer.js).
+MIN_PATTERN_VISITS = 5
+PERIOD_WORDS = {"Breakfast": "around breakfast", "Lunch": "around lunch", "Dinner": "around dinner",
+                "Late_Night": "late at night"}
+
+
+@dataclass
+class Explorer:
+    purchases: list   # every food purchase, oldest first: {day, time, place, spot, swipes, dollars, top_up, in_places}
+    places: list      # {name, visits, note}, most visits first
+    swipes_too: bool  # whether Explore your places has swipes, or only dining dollars
+
+
+def explorer(food, swipes_too: bool) -> Explorer:
+    """swipes_too: only YCMP plans choose where to swipe, so other plans only explore their dining dollars.
+
+    Without the swipes, top-ups are left out too, so each place matches its row in Top Spots.
+    """
+    food = food.sort_values("timestamp")
+    in_places = ~(food["is_swipe"] | food["is_top_up"]) | swipes_too
+    purchases = [
+        {
+            "day": row.day.isoformat(),
+            "time": f"{row.timestamp:%I:%M %p}".lstrip("0"),
+            "place": row.name,
+            "spot": row.spot,  # the place it's listed under in Explore your places and the raw data
+            "swipes": int(row.amount) if row.is_swipe else 0,
+            "dollars": 0 if row.is_swipe else round(float(row.amount), 2),
+            "top_up": bool(row.is_top_up),
+            "in_places": bool(shown),
+        }
+        for row, shown in zip(food.itertuples(), in_places)
+    ]
+    visits = food[in_places & ~food["is_top_up"]]  # a top-up goes with its swipe
+    by_spot = dict(list(visits.groupby("spot")))
+    places = [
+        {"name": spot, "visits": n, "note": pattern_note(by_spot[spot])}
+        for spot, n in by_count_then_recent(visits, "spot")
+    ]
+    return Explorer(purchases, places, swipes_too)
+
+
+def pattern_note(visits) -> str | None:
+    """'Mostly Mondays and Tuesdays, usually around dinner.' when visits to a place have a pattern."""
+    if len(visits) < MIN_PATTERN_VISITS:
+        return None
+    days = visits["weekday"].value_counts()
+    top_two = days.index[:2]
+    if days.iloc[0] / len(visits) > 0.5:
+        when = f"Mostly {days.index[0]}s"
+    elif days.iloc[:2].sum() / len(visits) >= 0.6 and (len(days) == 2 or days.iloc[1] > days.iloc[2]):
+        first, second = sorted(top_two, key=WEEKDAYS.index)
+        when = f"Mostly {first}s and {second}s"
+    else:
+        when = None
+    periods = visits["period"].value_counts()
+    meal = PERIOD_WORDS[periods.index[0]] if periods.iloc[0] / len(visits) >= 0.6 else None
+    if when and meal:
+        return f"{when}, usually {meal}."
+    if when:
+        return f"{when}."
+    if meal:
+        return f"Usually {meal}."
+    return None
+
+
+# "All your data": every place's swipes and dining dollars, in sections.
+HALL_COLUMNS = ["Breakfast", "Lunch", "Dinner", "Late night", "Grab 'n Go", "Swipes", "Dollars"]
+PLACE_COLUMNS = ["Breakfast", "Lunch", "Dinner", "Swipes", "Dollars"]
+
+
+def raw_sections(food) -> list:
+    """[{title, columns, rows}] for dining halls, Blue Wall, Harvest Market and everywhere else.
+
+    Each row is a place (food's spot, so a dining hall includes its Grab 'n Go): visits by meal,
+    total swipes, and every dining dollar spent there (top-ups too), so the sections add up to the
+    Wrapped's totals. Empty sections are left out.
+    """
+    def section(rows) -> str:
+        if isinstance(rows.iloc[0]["hall"], str):
+            return "Dining halls"
+        name = rows.iloc[0]["name"]
+        if blue_wall_name(name):
+            return "Blue Wall"
+        if re.search(HARVEST_MARKET, name, re.IGNORECASE):
+            return "Harvest Market"
+        return "Everywhere else"
+
+    groups = {}
+    for spot, rows in food.groupby("spot"):
+        visits = rows[~rows["is_top_up"]]  # a top-up goes with its swipe, not a visit of its own
+        is_grab = visits["grab_n_go"] & visits["hall"].isin(GRAB_N_GO_HALLS)
+        meals = visits[~is_grab]["period"].value_counts()
+        title = section(rows)
+        row = {
+            "place": spot,
+            "Breakfast": int(meals.get("Breakfast", 0)),
+            "Lunch": int(meals.get("Lunch", 0)),
+            "Dinner": int(meals.get("Dinner", 0)),
+        }
+        if title == "Dining halls" and spot in LATE_NIGHT_HALLS:
+            row["Late night"] = int(meals.get("Late_Night", 0))
+        else:
+            row["Dinner"] += int(meals.get("Late_Night", 0))  # no separate late night here
+            if title == "Dining halls":
+                row["Late night"] = None
+        if title == "Dining halls":
+            row["Grab 'n Go"] = int(is_grab.sum())
+        row["Swipes"] = int(rows.loc[rows["is_swipe"], "amount"].sum())
+        row["Dollars"] = round(float(rows.loc[~rows["is_swipe"], "amount"].sum()), 2)
+        groups.setdefault(title, []).append(row)
+
+    order = ["Dining halls", "Blue Wall", "Harvest Market", "Everywhere else"]
+    return [
+        {
+            "title": title,
+            "columns": HALL_COLUMNS if title == "Dining halls" else PLACE_COLUMNS,
+            "rows": sorted(groups[title], key=lambda r: (-r["Swipes"], -r["Dollars"], r["place"])),
+        }
+        for title in order if title in groups
+    ]

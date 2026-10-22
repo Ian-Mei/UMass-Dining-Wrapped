@@ -205,3 +205,39 @@ def test_plan_pace_counts_up_to_when_the_pdf_was_printed():
     result, _ = build_from_pdfs([make_history_pdf(rows, printed=date(2026, 10, 1))])
     [plan] = result.highlights.plans
     assert plan.runs_out == date(2026, 10, 8)
+
+
+def test_results_page_has_the_raw_data_and_the_explorer(client):
+    rows = [swipe("CPOS Tamales", f"09/{d:02d}/26 06:00:00 PM", account="T YCMP Commuter 155") for d in (14, 15, 21)]
+    page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
+    assert 'id="days"' in page and 'id="places"' in page
+    assert 'id="explorer-data"' in page and '"place": "Tamales"' in page
+    assert "data-explore-day" not in page  # no jumping ahead to a day; it would skip screens
+    assert '"busiest": "2026-09-14"' in page  # shown in gold on the month map instead
+    assert 'data-explore-place="Tamales"' in page  # from the Blue Wall reveal
+    assert "All your data" in page and "Every Place" in page
+
+
+def test_without_a_ycmp_plan_explore_your_places_is_only_dining_dollars(client):
+    # Unlimited plans don't choose where a swipe goes, so their places are where dining dollars went.
+    rows = [swipe("CPOS Tamales", f"09/{d:02d}/26 06:00:00 PM") for d in (14, 15, 21)]
+    page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
+    assert 'id="days"' in page and 'id="places"' not in page  # no dining dollars, no places
+    assert "data-explore-place" not in page
+    rows.append(charge("CPOS Peet's Coffee & Tea", "09/16/26 09:00:00 AM", 4.25))
+    page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
+    assert 'id="places"' in page and "Dining Dollars</h1>" in page
+    assert 'data-explore-place="Tamales"' not in page  # Blue Wall swipes aren't in it
+
+
+def test_only_laundry_still_makes_a_wrapped(client):
+    rows = [["Student Debit Plan", "10/07/26 01:41:00 PM", "X - OAK DRYER 10", "-$1.40", "$5.80"]]
+    assert upload(client, make_history_pdf(rows)).status_code == 200
+
+
+def test_raw_data_leaves_late_night_blank_where_there_is_none(client):
+    rows = [swipe("CPOS Hampshire DC", "09/14/26 12:00:00 PM"), swipe("CPOS Worcester DC", "09/14/26 01:00:00 PM")]
+    page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
+    tables = page[page.index("All your data"):]
+    assert "<td></td>" in tables          # Hamp has no late night
+    assert "<td>&ndash;</td>" in tables   # Worcester does, they just didn't go

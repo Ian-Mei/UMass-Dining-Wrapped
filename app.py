@@ -145,11 +145,7 @@ def build_from_pdfs(pdfs):
 
 
 def render_wrapped(result, maybe_cut_off=False):
-    vendor_table_html = (
-        result.vendors.rename(columns=str.title).rename_axis(None)
-        .to_html(classes="data", formatters={"Spent": "${:.2f}".format})
-    )
-    return render_template("wrapped.html", w=result, vendor_table_html=vendor_table_html, maybe_cut_off=maybe_cut_off)
+    return render_template("wrapped.html", w=result, maybe_cut_off=maybe_cut_off)
 
 
 # Dev only (flask --app app run --debug): re-render saved uploads without going through GET.
