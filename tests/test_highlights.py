@@ -413,12 +413,14 @@ def test_pattern_note_on_an_even_split():
 
 def test_explorer_places_are_only_dining_dollars_without_a_ycmp_plan():
     rows = [meal("CPOS Tamales", f"10/0{d}/26 12:00:00 PM") for d in (1, 2, 3)]
-    rows += [dollars("CPOS Tamales", "10/01/26 12:00:05 PM", 1.5, 98.5),  # would be a top-up; here it's the visit
-             dollars("CPOS Peet's Coffee & Tea", "10/02/26 09:00:00 AM", 4.25, 94.25)]
+    rows += [dollars("CPOS Tamales", "10/01/26 12:00:05 PM", 1.5, 98.5),  # a top-up: left out with its swipe
+             dollars("CPOS Tamales", "10/03/26 03:00:00 PM", 6, 92.5),     # bought on its own
+             dollars("CPOS Peet's Coffee & Tea", "10/02/26 09:00:00 AM", 4.25, 88.25)]
     e = highlights(rows).explorer
     assert not e.swipes_too
-    assert [(p["place"], p["in_places"]) for p in e.purchases if p["place"] == "Tamales"] ==         [("Tamales", False), ("Tamales", True), ("Tamales", False), ("Tamales", False)]
-    assert [(p["name"], p["visits"]) for p in e.places] == [("Peet's Coffee & Tea", 1), ("Tamales", 1)]
+    assert [(p["dollars"], p["in_places"]) for p in e.purchases if p["place"] == "Tamales"] ==         [(0, False), (1.5, False), (0, False), (0, False), (6, True)]
+    # Like Top Spots: Tamales is one visit for $6.00, not counting the top-up.
+    assert [(p["name"], p["visits"]) for p in e.places] == [("Tamales", 1), ("Peet's Coffee & Tea", 1)]
 
 
 def test_a_zero_meal_swipe_is_a_free_visit():

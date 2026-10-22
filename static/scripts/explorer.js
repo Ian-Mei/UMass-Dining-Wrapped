@@ -200,10 +200,9 @@ const Explorer = (() => {
     document.addEventListener("click", (event) => {
       const link = event.target.closest("[data-explore-place]");
       if (!link) return;
+      if (!selectPlace(link.dataset.explorePlace)) return;  // let the #places link do its thing
       event.preventDefault();
-      if (selectPlace(link.dataset.explorePlace)) {
-        document.getElementById("places").scrollIntoView({ behavior: "smooth" });
-      }
+      document.getElementById("places").scrollIntoView({ behavior: "smooth" });
     });
   };
 

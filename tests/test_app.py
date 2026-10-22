@@ -228,3 +228,16 @@ def test_without_a_ycmp_plan_explore_your_places_is_only_dining_dollars(client):
     page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
     assert 'id="places"' in page and "Dining Dollars</h1>" in page
     assert 'data-explore-place="Tamales"' not in page  # Blue Wall swipes aren't in it
+
+
+def test_only_laundry_still_makes_a_wrapped(client):
+    rows = [["Student Debit Plan", "10/07/26 01:41:00 PM", "X - OAK DRYER 10", "-$1.40", "$5.80"]]
+    assert upload(client, make_history_pdf(rows)).status_code == 200
+
+
+def test_raw_data_leaves_late_night_blank_where_there_is_none(client):
+    rows = [swipe("CPOS Hampshire DC", "09/14/26 12:00:00 PM"), swipe("CPOS Worcester DC", "09/14/26 01:00:00 PM")]
+    page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
+    tables = page[page.index("All your data"):]
+    assert "<td></td>" in tables          # Hamp has no late night
+    assert "<td>&ndash;</td>" in tables   # Worcester does, they just didn't go

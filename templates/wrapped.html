@@ -379,7 +379,7 @@
                       <th scope="row">{% if row.place in explorable %}<a href="#places" data-explore-place="{{ row.place }}">{{ row.place }}</a>{% else %}{{ row.place }}{% endif %}</th>
                       {% for c in section.columns %}
                       {% set v = row[c] %}
-                      <td>{% if not v %}&ndash;{% elif c == "Dollars" %}${{ "%.2f"|format(v) }}{% else %}{{ v }}{% endif %}</td>
+                      <td>{% if v is none %}{% elif not v %}&ndash;{% elif c == "Dollars" %}${{ "%.2f"|format(v) }}{% else %}{{ v }}{% endif %}</td>
                       {% endfor %}
                     </tr>
                     {% endfor %}

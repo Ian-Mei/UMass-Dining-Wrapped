@@ -148,7 +148,9 @@ def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None,
     pace_until = min(today or date.today(), semester_end)
 
     food = tx[tx["kind"].isin(FOOD)].copy()
-    food["name"] = [display_name(p, h, g) for p, h, g in zip(food["place"], food["hall"], food["grab_n_go"])]
+    # dtype=object so the column is still text when there's no food at all (only laundry, say).
+    food["name"] = pd.Series([display_name(p, h, g) for p, h, g in zip(food["place"], food["hall"], food["grab_n_go"])],
+                             index=food.index, dtype=object)
     food["spot"] = food["hall"].where(food["hall"].notna(), food["name"])
     night = food["timestamp"] - pd.Timedelta(hours=NIGHT_ENDS_HOUR)
     food["day"] = night.dt.date
@@ -169,7 +171,7 @@ def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None,
         blue_wall=blue_wall(visits),
         harvest=harvest(visits),
         top_ups=top_ups(food),
-        explorer=explorer(food, swipes_too=bool(tx["account"].str.contains("YCMP").any())),
+        explorer=explorer(food, swipes_too=bool(food.loc[food["is_swipe"], "account"].str.contains("YCMP", case=False).any())),
         raw_sections=raw_sections(food),
     )
 
@@ -487,9 +489,12 @@ class Explorer:
 
 
 def explorer(food, swipes_too: bool) -> Explorer:
-    """swipes_too: only YCMP plans choose where to swipe, so other plans only explore their dining dollars."""
+    """swipes_too: only YCMP plans choose where to swipe, so other plans only explore their dining dollars.
+
+    Without the swipes, top-ups are left out too, so each place matches its row in Top Spots.
+    """
     food = food.sort_values("timestamp")
-    in_places = food["is_swipe"].map(lambda is_swipe: swipes_too or not is_swipe)
+    in_places = ~(food["is_swipe"] | food["is_top_up"]) | swipes_too
     purchases = [
         {
             "day": row.day.isoformat(),
@@ -503,14 +508,10 @@ def explorer(food, swipes_too: bool) -> Explorer:
         }
         for row, shown in zip(food.itertuples(), in_places)
     ]
-    # A top-up goes with its swipe, unless the swipe isn't shown: then it's a visit of its own.
-    visits = food[in_places & ~(food["is_top_up"] & swipes_too)]
+    visits = food[in_places & ~food["is_top_up"]]  # a top-up goes with its swipe
+    by_spot = dict(list(visits.groupby("spot")))
     places = [
-        {
-            "name": spot,
-            "visits": n,
-            "note": pattern_note(visits[visits["spot"] == spot]),
-        }
+        {"name": spot, "visits": n, "note": pattern_note(by_spot[spot])}
         for spot, n in by_count_then_recent(visits, "spot")
     ]
     return Explorer(purchases, places, swipes_too)
