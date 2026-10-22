@@ -1,7 +1,9 @@
+from datetime import date, datetime, timedelta
+
 import pytest
 
 from wrapped import ParseError, build_wrapped
-from wrapped.personality import AVERAGE_JOE, BIG_SPENDER, QUICK_EATER
+from wrapped.personality import AVERAGE_JOE, BELLA_HADID, BIG_SPENDER, QUICK_EATER
 from wrapped.transactions import clean
 
 from .conftest import charge, swipe
@@ -99,6 +101,28 @@ def test_personality_rules():
 
     grab_n_go = [swipe("FrankDC1", f"March {d % 28 + 1}, 2024, 1:{d % 60:02d}PM") for d in range(101)]
     assert wrapped_from(grab_n_go).personality == QUICK_EATER
+
+
+@pytest.mark.parametrize("account, per_week, expected", [
+    ("T YCMP Commuter 155", 4, BELLA_HADID),
+    ("T YCMP Commuter 155", 5, AVERAGE_JOE),
+    ("E Unlimited 250", 9, BELLA_HADID),
+    ("E Unlimited 250", 10, AVERAGE_JOE),
+    ("C Basic Plan", 2, AVERAGE_JOE),  # only YCMP and unlimited plans
+    ("K YCMP Gold", 4, BELLA_HADID),   # no meal count in the name, so it isn't skipped
+    ("G YCMP Cmmtr 65", 4, AVERAGE_JOE),  # 65 meals is only about 4 a week
+])
+def test_bella_hadid_eats_less_than_their_plan_expects(account, per_week, expected):
+    first = datetime(2026, 9, 7, 8)  # a Monday
+    rows = [swipe("CPOS Hampshire DC", (first + timedelta(weeks=w, days=d % 7, hours=d // 7 * 4)).strftime("%m/%d/%y %I:%M:%S %p"), account)
+            for w in range(10) for d in range(per_week)]
+    w = build_wrapped(clean(rows), today=date(2026, 11, 16))  # 10 weeks after the first swipe
+    assert w.personality == expected
+
+
+def test_no_bella_hadid_in_the_first_two_weeks():
+    rows = [swipe("CPOS Hampshire DC", "09/07/26 12:00:00 PM", "E Unlimited 250")]
+    assert build_wrapped(clean(rows), today=date(2026, 9, 18)).personality == AVERAGE_JOE
 
 
 def test_no_purchases_is_an_error():

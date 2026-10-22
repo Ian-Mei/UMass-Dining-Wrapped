@@ -17,7 +17,22 @@ VOYAGER = Personality("Voyager", "voyager", "You love every dining hall huh. You
 QUICK_EATER = Personality("Quick Eater", "quickEater", "Either you're always rushing to class, or just hate finding a seat at the dining hall, you just love that grab n go. It is really good though tbh. Frank fil a chicken sanwiches are soooo good.")
 EARLY_BIRD = Personality("Early Bird", "earlyBird", "You probrobly go to sleep at 10 every night. Good for you. I personally could never but whatever get that bag. Or you just get no sleep at all. Probably the latter.")
 VAMPIRE = Personality("Vampire", "vampire", "Now you love the late night and waiting in line forever for some medicore food. Unless its the perogis. Or the sweet n sour chicken. Or honestly its not that bad but the lines make it bad. Why you up eating anyway go to sleep.")
+BELLA_HADID = Personality("Bella Hadid", "bellaHadid", "You barely touched your meal plan this semester. Either you're living that model life or you've been surviving on iced coffee and vibes. Eat something bestie.")
 AVERAGE_JOE = Personality("Average Joe", "averageJoe", "You're just an average umass dining enjoyer, nothing to be ashamed of. I didn't make that many personalties and its kinda hard to get some of them so my fault. But maybe you'll get a different personality next semester :p.")
+
+
+# Fewer meal swipes a week than this, on average, makes a Bella Hadid. Other plans can't be one,
+# and neither can a plan too small to reach it (a 65-meal plan is about 4 a week).
+BELLA_HADID_MEALS_PER_WEEK = {"YCMP": 5, "Unlimited": 10}
+
+
+def bella_hadid(wrapped) -> bool:
+    threshold = BELLA_HADID_MEALS_PER_WEEK.get(wrapped.meal_plan)
+    if threshold is None or wrapped.meals_per_week is None:
+        return False
+    if wrapped.plan_meals_per_week is not None and wrapped.plan_meals_per_week < threshold:
+        return False
+    return wrapped.meals_per_week < threshold
 
 
 def pick_personality(wrapped) -> Personality:
@@ -40,4 +55,6 @@ def pick_personality(wrapped) -> Personality:
         return EARLY_BIRD
     if swipes.loc["Late_Night", "Worcester"] + swipes.loc["Late_Night", "Berk"] > 75:
         return VAMPIRE
+    if bella_hadid(wrapped):
+        return BELLA_HADID
     return AVERAGE_JOE
