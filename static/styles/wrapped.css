@@ -485,59 +485,6 @@ section .text-container .text-box li{
 }
 
 
-.table-wrapper{
-  margin: 10px 70px 70px;
-  max-width: 500px;
-  overflow: auto;
-  z-index: 2;
-}
-
-.table-wrapper h2{
-  color:black;
-}
-
-.dataframe {
-  box-shadow: 0 0 40px -10px rgba(0, 0, 0, .4);
-  border-radius: 5px;
-  font-size: 12px;
-  font-weight: normal;
-  border: black;
-  border-collapse: collapse;
-  width: 100%;
-  max-width: 100%;
-  white-space: nowrap;
-  background-color: white;
-}
-
-.dataframe tbody{
-  color: black;
-}
-.dataframe td, .dataframe th {
-  text-align: center;
-  padding: 8px;
-}
-
-.dataframe td {
-  border-right: 1px solid black;
-  font-size: 12px;
-}
-
-.dataframe thead th {
-  color: #ffffff;
-  background: #4FC3A1;
-}
-
-
-.dataframe thead th:nth-child(odd) {
-  color: #ffffff;
-  background: #324960;
-}
-
-.dataframe tr:nth-child(even) {
-  background: #F8F8F8;
-}
-
-
 /* Highlight screens (routine, clock, calendar, fun facts, plan): one card per screen, sized to
    fit a phone so each one can be screenshotted on its own. */
 section.stat {
@@ -896,6 +843,7 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
   padding: 0 8px;
   z-index: 2;
 }
+.xmonth-head button:disabled { cursor: default; opacity: 0.25; }
 .xmonth {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -1064,6 +1012,11 @@ a.listitem.explorable { color: inherit; cursor: pointer; text-decoration: none; 
   text-decoration: none;
 }
 .rawdata td { color: #42455a; font-variant-numeric: tabular-nums; }
+.rawnote {
+  color: #979cb0;
+  font-size: 11px;
+  margin: 10px 4px 0;
+}
 @media (max-width: 380px) {
   .rawdata { padding: 4px 6px 10px; }
   .rawdata table { font-size: 11px; }

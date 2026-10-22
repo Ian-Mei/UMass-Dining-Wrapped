@@ -335,10 +335,10 @@ def test_explorer_lists_every_food_purchase():
     ]
     purchases = highlights(rows).explorer.purchases
     assert purchases == [
-        {"day": "2026-09-14", "time": "12:30 PM", "place": "Star Ginger", "spot": "Star Ginger", "swipes": 1, "dollars": 0, "top_up": False},
-        {"day": "2026-09-14", "time": "12:41 PM", "place": "Harvest Market", "spot": "Harvest Market", "swipes": 2, "dollars": 0, "top_up": False},
-        {"day": "2026-09-14", "time": "12:41 PM", "place": "Harvest Market", "spot": "Harvest Market", "swipes": 0, "dollars": 3.0, "top_up": True},
-        {"day": "2026-09-14", "time": "1:10 AM", "place": "Worcester Grab 'n Go", "spot": "Worcester", "swipes": 1, "dollars": 0, "top_up": False},
+        {"day": "2026-09-14", "time": "12:30 PM", "place": "Star Ginger", "spot": "Star Ginger", "swipes": 1, "dollars": 0, "top_up": False, "in_places": True},
+        {"day": "2026-09-14", "time": "12:41 PM", "place": "Harvest Market", "spot": "Harvest Market", "swipes": 2, "dollars": 0, "top_up": False, "in_places": True},
+        {"day": "2026-09-14", "time": "12:41 PM", "place": "Harvest Market", "spot": "Harvest Market", "swipes": 0, "dollars": 3.0, "top_up": True, "in_places": True},
+        {"day": "2026-09-14", "time": "1:10 AM", "place": "Worcester Grab 'n Go", "spot": "Worcester", "swipes": 1, "dollars": 0, "top_up": False, "in_places": True},
     ]
 
 
@@ -349,7 +349,7 @@ def test_explorer_places_most_visited_first_with_a_pattern_note():
     rows = [ycmp("CPOS Tamales", f"{d}/26 {t}:00 PM" if t != "11:36" else f"{d}/26 {t}:00 AM") for d, t in days]
     rows += [ycmp("CPOS Wasabi", f"10/0{d}/26 12:00:00 PM") for d in (1, 2)]
     places = highlights(rows).explorer.places
-    assert [(p["name"], p["visits"], p["swipes"]) for p in places] == [("Tamales", 8, 8), ("Wasabi", 2, 2)]
+    assert [(p["name"], p["visits"]) for p in places] == [("Tamales", 8), ("Wasabi", 2)]
     assert places[0]["note"] == "Mostly Mondays and Tuesdays, usually around dinner."
     assert places[1]["note"] is None  # too few visits to call it a pattern
 
@@ -386,6 +386,7 @@ def test_raw_data_sections():
                                   "Grab 'n Go": 1, "Swipes": 3, "Dollars": 0}
     # Meal columns count visits of any kind: paying with dollars at Hamp is a dinner visit.
     assert (halls["Hamp"]["Dinner"], halls["Hamp"]["Swipes"], halls["Hamp"]["Dollars"]) == (1, 0, pytest.approx(12))
+    assert halls["Hamp"]["Late night"] is None  # Hamp has no late night
     [tamales] = sections["Blue Wall"]["rows"]
     # One lunch visit (2 swipes, plus a top-up that goes with them).
     assert (tamales["place"], tamales["Lunch"], tamales["Swipes"], tamales["Dollars"]) == ("Tamales", 1, 2, 1.5)
@@ -408,6 +409,37 @@ def test_explorer_counts_a_dining_halls_grab_n_go_as_the_hall():
 def test_pattern_note_on_an_even_split():
     rows = [ycmp("CPOS Tamales", f"09/{d:02d}/26 06:00:00 PM") for d in (14, 15, 21, 22, 28, 29)]  # 3 Mon, 3 Tue
     assert highlights(rows).explorer.places[0]["note"] == "Mostly Mondays and Tuesdays, usually around dinner."
+
+
+def test_explorer_places_are_only_dining_dollars_without_a_ycmp_plan():
+    rows = [meal("CPOS Tamales", f"10/0{d}/26 12:00:00 PM") for d in (1, 2, 3)]
+    rows += [dollars("CPOS Tamales", "10/01/26 12:00:05 PM", 1.5, 98.5),  # would be a top-up; here it's the visit
+             dollars("CPOS Peet's Coffee & Tea", "10/02/26 09:00:00 AM", 4.25, 94.25)]
+    e = highlights(rows).explorer
+    assert not e.swipes_too
+    assert [(p["place"], p["in_places"]) for p in e.purchases if p["place"] == "Tamales"] ==         [("Tamales", False), ("Tamales", True), ("Tamales", False), ("Tamales", False)]
+    assert [(p["name"], p["visits"]) for p in e.places] == [("Peet's Coffee & Tea", 1), ("Tamales", 1)]
+
+
+def test_a_zero_meal_swipe_is_a_free_visit():
+    # GET's "-0" rows: an unlimited plan's dinner that didn't take a swipe.
+    rows = [meal("CPOS Worcester DC", "09/06/26 10:57:10 AM"),
+            ["E Unlimited 250", "09/06/26 07:42:10 PM", "CPOS Worcester DC", "-0", "593"]]
+    [_, free] = highlights(rows).explorer.purchases
+    assert (free["swipes"], free["dollars"]) == (0, 0)
+
+
+def test_no_two_day_pattern_note_when_a_third_day_ties():
+    rows = [ycmp("CPOS Tamales", f"09/{d:02d}/26 06:00:00 PM") for d in (14, 15, 16, 21, 22, 23)]  # 2 Mon, 2 Tue, 2 Wed
+    assert highlights(rows).explorer.places[0]["note"] == "Usually around dinner."
+
+
+def test_raw_data_late_night_only_at_halls_that_have_it():
+    rows = [ycmp("CPOS Franklin DC", "10/05/26 09:15:00 PM"), ycmp("CPOS Worcester DC", "10/05/26 09:15:00 PM")]
+    w = build_wrapped(clean(rows), today=date(2026, 10, 5), history=account_history(rows))
+    halls = {r["place"]: r for r in w.highlights.raw_sections[0]["rows"]}
+    assert (halls["Frank"]["Dinner"], halls["Frank"]["Late night"]) == (1, None)
+    assert (halls["Worcester"]["Dinner"], halls["Worcester"]["Late night"]) == (0, 1)
 
 
 def test_harvest_market_link_uses_the_name_in_the_data():

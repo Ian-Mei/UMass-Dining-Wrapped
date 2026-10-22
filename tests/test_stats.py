@@ -131,6 +131,12 @@ def test_a_swipe_with_an_unreadable_amount_still_counts_once():
     assert w.total_swipes == 1
 
 
+def test_unreadable_amounts_are_one_swipe_or_no_dollars():
+    tx = clean([["M Unlimited DC", "10/05/26 12:00:00 PM", "CPOS Worcester DC", "-", "500"],
+                ["UMass Dining Dollars", "10/05/26 01:00:00 PM", "CPOS Tamales", "-$", "$88.00"]])
+    assert list(tx["amount"]) == [1, 0]
+
+
 def test_dining_dollars_paid_at_a_hall_are_not_swipes():
     w = wrapped_from([
         swipe("CPOS Hampshire DC", "10/05/26 12:00:00 PM"),

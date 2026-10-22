@@ -38,7 +38,8 @@ const Explorer = (() => {
   const level = (visits) => Math.min(visits || 0, 4);
 
   const money = (n) => `$${n.toFixed(2)}`;
-  const tag = (p) => (p.swipes ? `${p.swipes} swipe${p.swipes === 1 ? "" : "s"}` : money(p.dollars));
+  // GET sometimes records a swipe of 0 meals (an unlimited plan's dinner that didn't count): "free".
+  const tag = (p) => (p.swipes ? `${p.swipes} swipe${p.swipes === 1 ? "" : "s"}` : p.dollars ? money(p.dollars) : "free");
 
   // "4 swipes · $3.00", leaving out whichever is zero.
   const totals = (purchases) => {
@@ -74,7 +75,7 @@ const Explorer = (() => {
     row.append(el("span", "xplace", showPlace ? p.place : ""));
     const tags = el("span", "xtags");
     if (p.top_up) tags.append(el("span", "xtag topup", "top-up"));
-    tags.append(el("span", p.swipes ? "xtag swipe" : "xtag dollars", tag(p)));
+    tags.append(el("span", p.swipes || !p.dollars ? "xtag swipe" : "xtag dollars", tag(p)));
     row.append(tags);
     return row;
   };
@@ -97,9 +98,17 @@ const Explorer = (() => {
     // Open on their busiest day (gold on the map), or else the latest one.
     let selected = byDay.has(data.busiest) ? data.busiest : days[days.length - 1];
     let shown = parseDay(selected);
+    // The month arrows stop at the first and last month with purchases.
+    const monthIndex = (d) => d.getFullYear() * 12 + d.getMonth();
+    const firstMonth = monthIndex(parseDay(days[0]));
+    const lastMonth = monthIndex(parseDay(days[days.length - 1]));
+    const prevMonth = daysCard.querySelector(".xmonth-prev");
+    const nextMonth = daysCard.querySelector(".xmonth-next");
 
     const drawMonth = () => {
       monthTitle.textContent = `${MONTHS[shown.getMonth()]} ${shown.getFullYear()}`;
+      prevMonth.disabled = monthIndex(shown) <= firstMonth;
+      nextMonth.disabled = monthIndex(shown) >= lastMonth;
       grid.replaceChildren(...WEEKDAYS.map((d) => el("span", "xweekday", d[0])));
       for (const day of monthCells(shown.getFullYear(), shown.getMonth())) {
         if (!day) { grid.append(el("span", "xcell empty")); continue; }
@@ -132,11 +141,11 @@ const Explorer = (() => {
       note.hidden = false;
     }
 
-    daysCard.querySelector(".xmonth-prev").addEventListener("click", () => {
+    prevMonth.addEventListener("click", () => {
       shown = new Date(shown.getFullYear(), shown.getMonth() - 1, 1);
       drawMonth();
     });
-    daysCard.querySelector(".xmonth-next").addEventListener("click", () => {
+    nextMonth.addEventListener("click", () => {
       shown = new Date(shown.getFullYear(), shown.getMonth() + 1, 1);
       drawMonth();
     });
@@ -144,8 +153,9 @@ const Explorer = (() => {
     nextDay.addEventListener("click", () => selectDay(days[days.indexOf(selected) + 1]));
     selectDay(selected);
 
-    // Explore your places
+    // Explore your places (YCMP plans only)
     const placesCard = document.getElementById("explore-places");
+    if (!placesCard) return;
     const chips = placesCard.querySelector(".xchips");
     const summary = placesCard.querySelector(".xplace-sum");
     const note = placesCard.querySelector(".xnote");
@@ -156,8 +166,8 @@ const Explorer = (() => {
       const place = data.places.find((p) => p.name === name);
       if (!place) return false;
       for (const chip of chips.children) chip.classList.toggle("on", chip.dataset.place === place.name);
-      const theirs = purchases.filter((p) => p.spot === place.name);
-      const spent = totals(theirs);
+      const theirs = purchases.filter((p) => p.in_places && p.spot === place.name);
+      const spent = totals(theirs) || "Nothing bought";
       summary.textContent = `${spent} over ${place.visits} visit${place.visits === 1 ? "" : "s"}`;
       note.textContent = place.note || "";
       note.hidden = !place.note;

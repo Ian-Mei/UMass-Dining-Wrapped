@@ -5,10 +5,9 @@ import pandas as pd
 
 from .highlights import Highlights, build_highlights, display_name
 from .personality import Personality, pick_personality
-from .transactions import GRAB_N_GO_HALLS, ParseError
+from .transactions import GRAB_N_GO_HALLS, LATE_NIGHT_HALLS, ParseError
 
 HALL_ORDER = ["Hamp", "Worcester", "Berk", "Frank"]
-LATE_NIGHT_HALLS = {"Worcester", "Berk"}
 
 SWIPE_ROWS = ["Breakfast", "Lunch", "Dinner", "Late_Night", "GrabNGo", "Total"]
 
@@ -65,7 +64,6 @@ def semester_name(timestamps: pd.Series) -> tuple[str, str]:
 def swipe_column(visits: pd.DataFrame, late_night: bool, grab_n_go: bool) -> dict:
     # Counts swipes, not rows: GET sometimes takes 2 in one row (e.g. paying for a friend).
     is_grab = visits["grab_n_go"] if grab_n_go else pd.Series(False, index=visits.index)
-    visits = visits.assign(amount=visits["amount"].fillna(1))  # an unreadable amount is still a swipe
     periods = visits[~is_grab].groupby("period")["amount"].sum()
     return {
         "Breakfast": int(periods.get("Breakfast", 0)),

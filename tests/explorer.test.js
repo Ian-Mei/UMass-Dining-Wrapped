@@ -24,6 +24,7 @@ test("tags and totals", () => {
   assert.strictEqual(X.tag(p("2026-09-14", 1)), "1 swipe");
   assert.strictEqual(X.tag(p("2026-09-14", 2)), "2 swipes");
   assert.strictEqual(X.tag(p("2026-09-14", 0, 3)), "$3.00");
+  assert.strictEqual(X.tag(p("2026-09-14", 0, 0)), "free");
   assert.strictEqual(X.totals([p("d", 1), p("d", 2), p("d", 0, 3)]), "3 swipes · $3.00");
   assert.strictEqual(X.totals([p("d", 0, 4.5)]), "$4.50");
   assert.strictEqual(X.totals([]), "");

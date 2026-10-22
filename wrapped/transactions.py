@@ -37,6 +37,7 @@ TIMESTAMP_FORMATS = (
 DINING_HALLS = {"HampDC": "Hamp", "WorcDC": "Worcester", "BerkDC": "Berk", "FrankDC": "Frank"}
 # The halls whose Grab 'n Go gets its own count (in the swipe table and the raw data).
 GRAB_N_GO_HALLS = {"Worcester", "Frank"}
+LATE_NIGHT_HALLS = {"Worcester", "Berk"}
 # By Fall 2026 they're "CPOS Worcester DC", with Grab 'n Go as its own "CPOS Worcester GG".
 NEW_HALL_TERMINAL = r"^CPOS (Hampshire|Worcester|Berkshire|Franklin) (DC|GG)$"
 NEW_DINING_HALLS = {"Hampshire": "Hamp", "Worcester": "Worcester", "Berkshire": "Berk", "Franklin": "Frank"}
@@ -247,6 +248,8 @@ def clean(rows: list[list[str]]) -> pd.DataFrame:
         "is_swipe": ~raw["amount"].str.contains("$", regex=False),
     })
     tx = tx.dropna(subset=["timestamp"])
+    # An unreadable amount is still one swipe, or $0.
+    tx["amount"] = tx["amount"].fillna(tx["is_swipe"].astype(float))
     new_style = tx["location"].str.extract(NEW_HALL_TERMINAL)
     tx["hall"] = tx["place"].map(DINING_HALLS).fillna(new_style[0].map(NEW_DINING_HALLS))
     tx["grab_n_go"] = new_style[1].eq("GG") | (tx["hall"].isin(GRAB_N_GO_HALLS) & tx["terminal"].eq("1"))

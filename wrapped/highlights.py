@@ -8,7 +8,7 @@ from datetime import date, time, timedelta
 
 import pandas as pd
 
-from .transactions import GRAB_N_GO_HALLS
+from .transactions import GRAB_N_GO_HALLS, LATE_NIGHT_HALLS
 
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 FOOD = ["hall", "vendor"]
@@ -148,8 +148,6 @@ def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None,
     pace_until = min(today or date.today(), semester_end)
 
     food = tx[tx["kind"].isin(FOOD)].copy()
-    # An unreadable amount is still one swipe (as in the swipe table), or $0.
-    food["amount"] = food["amount"].fillna(food["is_swipe"].astype(float))
     food["name"] = [display_name(p, h, g) for p, h, g in zip(food["place"], food["hall"], food["grab_n_go"])]
     food["spot"] = food["hall"].where(food["hall"].notna(), food["name"])
     night = food["timestamp"] - pd.Timedelta(hours=NIGHT_ENDS_HOUR)
@@ -171,7 +169,7 @@ def build_highlights(tx: pd.DataFrame, semester: str, today: date | None = None,
         blue_wall=blue_wall(visits),
         harvest=harvest(visits),
         top_ups=top_ups(food),
-        explorer=explorer(food),
+        explorer=explorer(food, swipes_too=bool(tx["account"].str.contains("YCMP").any())),
         raw_sections=raw_sections(food),
     )
 
@@ -483,12 +481,15 @@ PERIOD_WORDS = {"Breakfast": "around breakfast", "Lunch": "around lunch", "Dinne
 
 @dataclass
 class Explorer:
-    purchases: list  # every food purchase, oldest first: {day, time, place, swipes, dollars, top_up}
-    places: list     # {name, visits, swipes, note}, most visits first
+    purchases: list   # every food purchase, oldest first: {day, time, place, spot, swipes, dollars, top_up, in_places}
+    places: list      # {name, visits, note}, most visits first
+    swipes_too: bool  # whether Explore your places has swipes, or only dining dollars
 
 
-def explorer(food) -> Explorer:
+def explorer(food, swipes_too: bool) -> Explorer:
+    """swipes_too: only YCMP plans choose where to swipe, so other plans only explore their dining dollars."""
     food = food.sort_values("timestamp")
+    in_places = food["is_swipe"].map(lambda is_swipe: swipes_too or not is_swipe)
     purchases = [
         {
             "day": row.day.isoformat(),
@@ -498,20 +499,21 @@ def explorer(food) -> Explorer:
             "swipes": int(row.amount) if row.is_swipe else 0,
             "dollars": 0 if row.is_swipe else round(float(row.amount), 2),
             "top_up": bool(row.is_top_up),
+            "in_places": bool(shown),
         }
-        for row in food.itertuples()
+        for row, shown in zip(food.itertuples(), in_places)
     ]
-    visits = food[~food["is_top_up"]]
+    # A top-up goes with its swipe, unless the swipe isn't shown: then it's a visit of its own.
+    visits = food[in_places & ~(food["is_top_up"] & swipes_too)]
     places = [
         {
             "name": spot,
             "visits": n,
-            "swipes": int(visits.loc[(visits["spot"] == spot) & visits["is_swipe"], "amount"].sum()),
             "note": pattern_note(visits[visits["spot"] == spot]),
         }
         for spot, n in by_count_then_recent(visits, "spot")
     ]
-    return Explorer(purchases, places)
+    return Explorer(purchases, places, swipes_too)
 
 
 def pattern_note(visits) -> str | None:
@@ -522,7 +524,7 @@ def pattern_note(visits) -> str | None:
     top_two = days.index[:2]
     if days.iloc[0] / len(visits) > 0.5:
         when = f"Mostly {days.index[0]}s"
-    elif days.iloc[:2].sum() / len(visits) >= 0.6:
+    elif days.iloc[:2].sum() / len(visits) >= 0.6 and (len(days) == 2 or days.iloc[1] > days.iloc[2]):
         first, second = sorted(top_two, key=WEEKDAYS.index)
         when = f"Mostly {first}s and {second}s"
     else:
@@ -572,11 +574,14 @@ def raw_sections(food) -> list:
             "Lunch": int(meals.get("Lunch", 0)),
             "Dinner": int(meals.get("Dinner", 0)),
         }
-        if title == "Dining halls":
+        if title == "Dining halls" and spot in LATE_NIGHT_HALLS:
             row["Late night"] = int(meals.get("Late_Night", 0))
-            row["Grab 'n Go"] = int(is_grab.sum())
         else:
-            row["Dinner"] += int(meals.get("Late_Night", 0))  # vendors don't have a separate late night
+            row["Dinner"] += int(meals.get("Late_Night", 0))  # no separate late night here
+            if title == "Dining halls":
+                row["Late night"] = None
+        if title == "Dining halls":
+            row["Grab 'n Go"] = int(is_grab.sum())
         row["Swipes"] = int(rows.loc[rows["is_swipe"], "amount"].sum())
         row["Dollars"] = round(float(rows.loc[~rows["is_swipe"], "amount"].sum()), 2)
         groups.setdefault(title, []).append(row)
