@@ -5,7 +5,7 @@ from dataclasses import dataclass
 @dataclass
 class Personality:
     name: str
-    image: str  # file name (without .png) in static/styles/imgs
+    image: str  # file name (without .png) in static/styles/imgs/personalities
     blurb: str
 
 
@@ -21,6 +21,7 @@ QUICK_EATER = Personality("Quick Eater", "quickEater", "Either you're always rus
 EARLY_BIRD = Personality("Early Bird", "earlyBird", "You probrobly go to sleep at 10 every night. Good for you. I personally could never but whatever get that bag. Or you just get no sleep at all. Probably the latter.")
 VAMPIRE = Personality("Vampire", "vampire", "Now you love the late night and waiting in line forever for some medicore food. Unless its the perogis. Or the sweet n sour chicken. Or honestly its not that bad but the lines make it bad. Why you up eating anyway go to sleep.")
 BELLA_HADID = Personality("Bella Hadid", "bellaHadid", "You barely touched your meal plan this semester. Either you're living that model life or you've been surviving on iced coffee and vibes. Eat something bestie.")
+GREEDY = Personality("Greedy", "greedy", "When one swipe isnt enough. Do you even measure your food on the scale?")
 AVERAGE_JOE = Personality("Average Joe", "averageJoe", "You're just an average umass dining enjoyer, nothing to be ashamed of. I didn't make that many personalties and its kinda hard to get some of them so my fault. But maybe you'll get a different personality next semester :p.")
 
 
@@ -57,6 +58,18 @@ def avatar(total) -> bool:
     return all(abs(total[hall] / halls - even) <= AVATAR_SHARE_RANGE + 1e-9 for hall in DINING_HALLS)
 
 
+# Topping up more than this share of their Harvest Market trips makes a Greedy, once there are
+# enough trips for it to mean something.
+GREEDY_TOP_UP_SHARE = 0.75
+GREEDY_MIN_VISITS = 5
+
+
+def greedy(wrapped) -> bool:
+    if wrapped.harvest_visits < GREEDY_MIN_VISITS:
+        return False
+    return wrapped.harvest_top_ups > GREEDY_TOP_UP_SHARE * wrapped.harvest_visits
+
+
 def pick_personality(wrapped) -> Personality:
     swipes = wrapped.swipes.fillna(0)
     total = swipes.loc["Total"]
@@ -66,6 +79,8 @@ def pick_personality(wrapped) -> Personality:
     for hall, personality in HALL_PERSONALITIES.items():
         if wrapped.total_swipes >= HALL_LOYALTY_MIN_SWIPES and total[hall] >= HALL_LOYALTY_SHARE * wrapped.total_swipes:
             return personality
+    if greedy(wrapped):
+        return GREEDY
     if wrapped.total_spent > 250:
         return BIG_SPENDER
     if wrapped.total_swipes > 300:

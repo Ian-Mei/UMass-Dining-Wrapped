@@ -3,8 +3,8 @@ from datetime import date, datetime, timedelta
 import pytest
 
 from wrapped import ParseError, build_wrapped
-from wrapped.personality import (AVATAR, AVERAGE_JOE, BELLA_HADID, BERK_BEAST, BIG_SPENDER, CONNOISSEUR, FRANK_FANATIC, HAMP_HEAD,
-                                 QUICK_EATER, WORCESTER_WARRIOR)
+from wrapped.personality import (AVATAR, AVERAGE_JOE, BELLA_HADID, BERK_BEAST, BIG_SPENDER, CONNOISSEUR, FRANK_FANATIC, GREEDY,
+                                 HAMP_HEAD, QUICK_EATER, WORCESTER_WARRIOR)
 from wrapped.transactions import clean
 
 from .conftest import charge, swipe
@@ -165,6 +165,32 @@ def test_avatar_splits_swipes_evenly_between_the_dining_halls():
     assert wrapped_from(hall_swipes({"Worcester DC": 12, "Hampshire DC": 10, "Berkshire DC": 10, "Franklin DC": 8})).personality == AVATAR
     assert wrapped_from(hall_swipes({"Worcester DC": 13, "Hampshire DC": 10, "Berkshire DC": 10, "Franklin DC": 7})).personality != AVATAR
     assert wrapped_from(hall_swipes({"Worcester DC": 4, "Hampshire DC": 4, "Berkshire DC": 4, "Franklin DC": 4})).personality != AVATAR  # too few
+
+
+def harvest_trips(topped_up, plain):
+    rows = []
+    for d in range(1, topped_up + plain + 1):
+        when = f"10/{d:02d}/26 12:00:"
+        rows.append(swipe("CPOS Harvest Market", when + "00 PM", account="T YCMP Commuter 155"))
+        if d <= topped_up:
+            rows.append(charge("CPOS Harvest Market", when + "08 PM", 4.50))
+    return rows
+
+
+def test_greedy_tops_up_most_harvest_market_swipes():
+    w = wrapped_from(harvest_trips(topped_up=4, plain=1))
+    assert (w.harvest_visits, w.harvest_top_ups) == (5, 4)
+    assert w.personality == GREEDY
+    assert wrapped_from(harvest_trips(topped_up=3, plain=1)).personality != GREEDY  # too few trips
+    assert wrapped_from(harvest_trips(topped_up=6, plain=2)).personality != GREEDY  # 75% isn't more than 75%
+
+
+def test_a_double_swipe_at_harvest_market_is_one_visit():
+    rows = harvest_trips(topped_up=4, plain=1)
+    rows += [swipe("CPOS Harvest Market", f"10/{d:02d}/26 12:00:04 PM", account="T YCMP Commuter 155") for d in (1, 2)]
+    w = wrapped_from(rows)
+    assert (w.harvest_visits, w.harvest_top_ups) == (5, 4)
+    assert w.personality == GREEDY
 
 
 def test_no_purchases_is_an_error():

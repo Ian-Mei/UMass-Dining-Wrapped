@@ -5,7 +5,7 @@ from datetime import date
 
 import pandas as pd
 
-from .highlights import SEMESTER_ENDS, Highlights, build_highlights, display_name
+from .highlights import DOUBLE_SWIPE_SECONDS, HARVEST_MARKET, SEMESTER_ENDS, Highlights, build_highlights, display_name
 from .personality import Personality, pick_personality
 from .transactions import GRAB_N_GO_HALLS, LATE_NIGHT_HALLS, ParseError
 
@@ -42,6 +42,8 @@ class Wrapped:
     meal_plan: str | None          # "YCMP" or "Unlimited", from the account they swiped with most
     meals_per_week: float | None   # total_swipes over the weeks since their first swipe
     plan_meals_per_week: float | None  # what their plan allows over the same weeks; None if not capped
+    harvest_visits: int    # trips to Harvest Market; a top-up or a second swipe goes with its first swipe
+    harvest_top_ups: int   # of those trips, how many they topped up with dining dollars
     laundry: Laundry | None
     highlights: Highlights
     personality: Personality
@@ -124,6 +126,14 @@ def vendor_table(tx: pd.DataFrame) -> pd.DataFrame:
     return table.sort_values(["spent", "visits"], ascending=False)
 
 
+def harvest_counts(tx: pd.DataFrame) -> tuple[int, int]:
+    """(visits, top-ups) at Harvest Market. A double swipe is one visit."""
+    there = tx[(tx["kind"] == "vendor") & tx["place"].str.contains(HARVEST_MARKET, case=False, regex=True)]
+    times = there.loc[~there["is_top_up"], "timestamp"].sort_values()
+    visits = int((times.diff().dt.total_seconds().fillna(float("inf")) > DOUBLE_SWIPE_SECONDS).sum())
+    return visits, int(there["is_top_up"].sum())
+
+
 def laundry_stats(tx: pd.DataFrame) -> Laundry | None:
     loads = tx[tx["kind"] == "laundry"]
     if loads.empty:
@@ -192,6 +202,7 @@ def build_wrapped(tx: pd.DataFrame, today=None, history=None) -> Wrapped:
     semester, semester_short = semester_name(tx["timestamp"])
     total_swipes = int(swipes.loc["Total"].sum())
     account = plan_account(tx)
+    harvest_visits, harvest_top_ups = harvest_counts(tx)
 
     wrapped = Wrapped(
         semester=semester,
@@ -207,6 +218,8 @@ def build_wrapped(tx: pd.DataFrame, today=None, history=None) -> Wrapped:
         meal_plan=meal_plan(account),
         meals_per_week=meals_per_week(tx, total_swipes, semester, today),
         plan_meals_per_week=plan_meals_per_week(tx, account, semester),
+        harvest_visits=harvest_visits,
+        harvest_top_ups=harvest_top_ups,
         laundry=laundry_stats(tx),
         highlights=build_highlights(tx, semester, today, history),
         personality=None,
