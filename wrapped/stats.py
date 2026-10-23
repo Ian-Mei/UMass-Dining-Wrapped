@@ -1,9 +1,11 @@
 """Compute the Wrapped stats from a clean transactions frame (see transactions.clean)."""
+import re
 from dataclasses import dataclass
+from datetime import date
 
 import pandas as pd
 
-from .highlights import Highlights, build_highlights, display_name
+from .highlights import DOUBLE_SWIPE_SECONDS, HARVEST_MARKET, SEMESTER_ENDS, Highlights, build_highlights, display_name
 from .personality import Personality, pick_personality
 from .transactions import GRAB_N_GO_HALLS, LATE_NIGHT_HALLS, ParseError
 
@@ -36,6 +38,12 @@ class Wrapped:
     vendors: pd.DataFrame
     total_swipes: int
     total_spent: float
+    places_tried: int  # food places they swiped or paid at; a dining hall (with its Grab 'n Go) is one place
+    meal_plan: str | None          # "YCMP" or "Unlimited", from the account they swiped with most
+    meals_per_week: float | None   # total_swipes over the weeks since their first swipe
+    plan_meals_per_week: float | None  # what their plan allows over the same weeks; None if not capped
+    harvest_visits: int    # trips to Harvest Market; a top-up or a second swipe goes with its first swipe
+    harvest_top_ups: int   # of those trips, how many they topped up with dining dollars
     laundry: Laundry | None
     highlights: Highlights
     personality: Personality
@@ -80,6 +88,11 @@ def vendor_name(place: str) -> str:
     return display_name(place, None, False)
 
 
+def places_tried(tx: pd.DataFrame) -> int:
+    food = tx[tx["kind"].isin(["hall", "vendor"])]
+    return food["hall"].where(food["hall"].notna(), food["place"].map(vendor_name)).nunique()
+
+
 def swipe_table(tx: pd.DataFrame) -> pd.DataFrame:
     # Only swipes: dining dollars paid at a hall count toward money spent, not meal swipes.
     halls = tx[(tx["kind"] == "hall") & tx["is_swipe"]]
@@ -113,6 +126,14 @@ def vendor_table(tx: pd.DataFrame) -> pd.DataFrame:
     return table.sort_values(["spent", "visits"], ascending=False)
 
 
+def harvest_counts(tx: pd.DataFrame) -> tuple[int, int]:
+    """(visits, top-ups) at Harvest Market. A double swipe is one visit."""
+    there = tx[(tx["kind"] == "vendor") & tx["place"].str.contains(HARVEST_MARKET, case=False, regex=True)]
+    times = there.loc[~there["is_top_up"], "timestamp"].sort_values()
+    visits = int((times.diff().dt.total_seconds().fillna(float("inf")) > DOUBLE_SWIPE_SECONDS).sum())
+    return visits, int(there["is_top_up"].sum())
+
+
 def laundry_stats(tx: pd.DataFrame) -> Laundry | None:
     loads = tx[tx["kind"] == "laundry"]
     if loads.empty:
@@ -127,6 +148,46 @@ def laundry_stats(tx: pd.DataFrame) -> Laundry | None:
     )
 
 
+def plan_account(tx: pd.DataFrame) -> str | None:
+    """The account they swiped with most."""
+    swipes = tx[tx["is_swipe"]]
+    return swipes["account"].value_counts().index[0] if not swipes.empty else None
+
+
+def meal_plan(account: str | None) -> str | None:
+    account = (account or "").upper()
+    return "YCMP" if "YCMP" in account else "Unlimited" if "UNLIMITED" in account else None
+
+
+# Under this, an average is just the first few days of the semester.
+MIN_WEEKS_FOR_AVERAGE = 2
+
+
+def meals_per_week(tx: pd.DataFrame, total_swipes: int, semester: str, today: date | None) -> float | None:
+    """Swipes per week from their first swipe up to today (or their last purchase), within the semester."""
+    swipes = tx[tx["is_swipe"]]
+    if swipes.empty:
+        return None
+    season, year = semester.split()
+    until = min(today or tx["timestamp"].max().date(), date(int(year), *SEMESTER_ENDS[season]))
+    weeks = (until - swipes["timestamp"].min().date()).days / 7
+    return total_swipes / weeks if weeks >= MIN_WEEKS_FOR_AVERAGE else None
+
+
+def plan_meals_per_week(tx: pd.DataFrame, account: str | None, semester: str) -> float | None:
+    """A capped plan's meals ("G YCMP Cmmtr 65" has 65) spread from their first swipe to the end of
+    the semester. None for unlimited plans and names without a number ("K YCMP Gold")."""
+    if meal_plan(account) != "YCMP":
+        return None
+    meals = re.search(r"(\d+)\s*$", account)
+    if not meals:
+        return None
+    season, year = semester.split()
+    first = tx.loc[tx["is_swipe"], "timestamp"].min().date()
+    weeks = (date(int(year), *SEMESTER_ENDS[season]) - first).days / 7
+    return int(meals[1]) / weeks if weeks > 0 else None
+
+
 def build_wrapped(tx: pd.DataFrame, today=None, history=None) -> Wrapped:
     """today: the date plan pace counts up to (defaults to the real date).
     history: every account's balance history (transactions.account_history), so plan pace sees
@@ -139,6 +200,9 @@ def build_wrapped(tx: pd.DataFrame, today=None, history=None) -> Wrapped:
     totals = swipes.loc["Total", HALL_ORDER].astype(int).sort_values(ascending=False, kind="stable")
     vendors = vendor_table(tx)
     semester, semester_short = semester_name(tx["timestamp"])
+    total_swipes = int(swipes.loc["Total"].sum())
+    account = plan_account(tx)
+    harvest_visits, harvest_top_ups = harvest_counts(tx)
 
     wrapped = Wrapped(
         semester=semester,
@@ -148,8 +212,14 @@ def build_wrapped(tx: pd.DataFrame, today=None, history=None) -> Wrapped:
         swipes=swipes,
         hall_ranking=[(hall, int(n)) for hall, n in totals.items() if n > 0],
         vendors=vendors,
-        total_swipes=int(swipes.loc["Total"].sum()),
+        total_swipes=total_swipes,
+        places_tried=places_tried(tx),
         total_spent=float(tx.loc[tx["kind"].isin(["hall", "vendor"]) & ~tx["is_swipe"], "amount"].sum()),
+        meal_plan=meal_plan(account),
+        meals_per_week=meals_per_week(tx, total_swipes, semester, today),
+        plan_meals_per_week=plan_meals_per_week(tx, account, semester),
+        harvest_visits=harvest_visits,
+        harvest_top_ups=harvest_top_ups,
         laundry=laundry_stats(tx),
         highlights=build_highlights(tx, semester, today, history),
         personality=None,
