@@ -44,6 +44,8 @@ class Wrapped:
     plan_meals_per_week: float | None  # what their plan allows over the same weeks; None if not capped
     harvest_visits: int    # trips to Harvest Market; a top-up or a second swipe goes with its first swipe
     harvest_top_ups: int   # of those trips, how many they topped up with dining dollars
+    coffee_per_week: float | None       # trips to a coffee place; None like meals_per_week
+    late_snacks_per_week: float | None  # dining dollar food purchases between 9pm and 4am
     laundry: Laundry | None
     highlights: Highlights
     personality: Personality
@@ -163,15 +165,38 @@ def meal_plan(account: str | None) -> str | None:
 MIN_WEEKS_FOR_AVERAGE = 2
 
 
+def per_week(count: int, since: pd.Timestamp, tx: pd.DataFrame, semester: str, today: date | None) -> float | None:
+    """count per week from since up to today (or their last purchase), within the semester."""
+    season, year = semester.split()
+    until = min(today or tx["timestamp"].max().date(), date(int(year), *SEMESTER_ENDS[season]))
+    weeks = (until - since.date()).days / 7
+    return count / weeks if weeks >= MIN_WEEKS_FOR_AVERAGE else None
+
+
 def meals_per_week(tx: pd.DataFrame, total_swipes: int, semester: str, today: date | None) -> float | None:
-    """Swipes per week from their first swipe up to today (or their last purchase), within the semester."""
+    """Swipes per week from their first swipe."""
     swipes = tx[tx["is_swipe"]]
     if swipes.empty:
         return None
-    season, year = semester.split()
-    until = min(today or tx["timestamp"].max().date(), date(int(year), *SEMESTER_ENDS[season]))
-    weeks = (until - swipes["timestamp"].min().date()).days / 7
-    return total_swipes / weeks if weeks >= MIN_WEEKS_FOR_AVERAGE else None
+    return per_week(total_swipes, swipes["timestamp"].min(), tx, semester, today)
+
+
+# The cafés, Peet's, People's Organic Coffee and the library's Procrastination Station.
+COFFEE = r"\bcoffee\b|\bcaf[eé]\b|\bpeet'?s\b|procrastination station"
+
+
+def coffee_and_late_snacks(tx: pd.DataFrame, semester: str, today: date | None) -> tuple[float | None, float | None]:
+    """Per week from their first food purchase: trips to a coffee place, and food bought with
+    dining dollars between 9pm and 4am. A top-up goes with its swipe, so it isn't a trip or a snack."""
+    food = tx[tx["kind"].isin(["hall", "vendor"]) & ~tx["is_top_up"]]
+    if food.empty:
+        return None, None
+    since = food["timestamp"].min()
+    coffee = (food["kind"] == "vendor") & food["place"].map(vendor_name).str.contains(COFFEE, case=False, regex=True)
+    hour = food["timestamp"].dt.hour
+    late = ~food["is_swipe"] & ((hour >= 21) | (hour < 4))
+    return (per_week(int(coffee.sum()), since, tx, semester, today),
+            per_week(int(late.sum()), since, tx, semester, today))
 
 
 def plan_meals_per_week(tx: pd.DataFrame, account: str | None, semester: str) -> float | None:
@@ -203,6 +228,7 @@ def build_wrapped(tx: pd.DataFrame, today=None, history=None) -> Wrapped:
     total_swipes = int(swipes.loc["Total"].sum())
     account = plan_account(tx)
     harvest_visits, harvest_top_ups = harvest_counts(tx)
+    coffee_per_week, late_snacks_per_week = coffee_and_late_snacks(tx, semester, today)
 
     wrapped = Wrapped(
         semester=semester,
@@ -220,6 +246,8 @@ def build_wrapped(tx: pd.DataFrame, today=None, history=None) -> Wrapped:
         plan_meals_per_week=plan_meals_per_week(tx, account, semester),
         harvest_visits=harvest_visits,
         harvest_top_ups=harvest_top_ups,
+        coffee_per_week=coffee_per_week,
+        late_snacks_per_week=late_snacks_per_week,
         laundry=laundry_stats(tx),
         highlights=build_highlights(tx, semester, today, history),
         personality=None,

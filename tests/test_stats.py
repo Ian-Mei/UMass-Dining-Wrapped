@@ -3,8 +3,10 @@ from datetime import date, datetime, timedelta
 import pytest
 
 from wrapped import ParseError, build_wrapped
-from wrapped.personality import (AVATAR, AVERAGE_JOE, BELLA_HADID, BERK_BEAST, BIG_SPENDER, CONNOISSEUR, FRANK_FANATIC, GREEDY,
-                                 HAMP_HEAD, QUICK_EATER, WORCESTER_WARRIOR)
+from wrapped.personality import (AVATAR, AVERAGE_JOE, BELLA_HADID, BERK_BEAST, BIG_SPENDER, COFFEE_ADDICT, CONNOISSEUR,
+                                 DOUBLE_TROUBLE, FRANK_FANATIC, GREEDY, HAMP_HEAD, LUNCH_LORD, NIGHT_OWL_SNACKER,
+                                 PERFECTLY_BALANCED, QUICK_EATER, WEEKEND_GHOST, WORCESTER_WARRIOR)
+from wrapped.transactions import account_history
 from wrapped.transactions import clean
 
 from .conftest import charge, swipe
@@ -130,8 +132,9 @@ def test_hall_loyalty_personalities(hall, expected):
 ])
 def test_bella_hadid_eats_less_than_their_plan_expects(account, per_week, expected):
     first = datetime(2026, 9, 7, 8)  # a Monday
+    # Spread over the whole week, weekend too, so it isn't a Weekend Ghost.
     rows = [swipe("CPOS Hampshire DC" if w % 2 else "CPOS Berkshire DC",  # not 90% at one hall
-                  (first + timedelta(weeks=w, days=d % 7, hours=d // 7 * 4)).strftime("%m/%d/%y %I:%M:%S %p"), account)
+                  (first + timedelta(weeks=w, days=d * 7 // per_week, hours=d % 2 * 6)).strftime("%m/%d/%y %I:%M:%S %p"), account)
             for w in range(10) for d in range(per_week)]
     w = build_wrapped(clean(rows), today=date(2026, 11, 16))  # 10 weeks after the first swipe
     assert w.personality == expected
@@ -191,6 +194,66 @@ def test_a_double_swipe_at_harvest_market_is_one_visit():
     w = wrapped_from(rows)
     assert (w.harvest_visits, w.harvest_top_ups) == (5, 4)
     assert w.personality == GREEDY
+
+
+FIRST_MONDAY = datetime(2026, 9, 7)
+NO_PLAN = "C Basic Plan"  # so a small test history isn't a Bella Hadid
+
+
+def stamp(when):
+    return when.strftime("%m/%d/%y %I:%M:%S %p")
+
+
+def meals(days, hour=12, minute=0):
+    """One swipe on each of these days after Sep 7 2026, alternating Worcester and Hamp."""
+    return [swipe("CPOS Worcester DC" if d % 2 else "CPOS Hampshire DC",
+                  stamp(FIRST_MONDAY + timedelta(days=d, hours=hour, minutes=minute)), NO_PLAN) for d in days]
+
+
+def test_double_trouble_double_swipes_a_tenth_of_the_time():
+    rows = meals(range(20), hour=18)
+    seconds_later = lambda d: [swipe("CPOS Worcester DC" if d % 2 else "CPOS Hampshire DC",
+                                     stamp(FIRST_MONDAY + timedelta(days=d, hours=18, seconds=30)), NO_PLAN)]
+    assert wrapped_from(rows + seconds_later(0) + seconds_later(1) + seconds_later(2)).personality == DOUBLE_TROUBLE  # 3 of 23
+    assert wrapped_from(rows + seconds_later(0) + seconds_later(1)).personality != DOUBLE_TROUBLE  # 2 of 22
+
+
+@pytest.mark.parametrize("left, expected", [(17, PERFECTLY_BALANCED), (20, AVERAGE_JOE), (15, AVERAGE_JOE)])
+def test_perfectly_balanced_ends_the_semester_with_almost_no_swipes_left(left, expected):
+    # 20 swipes in 60 days, so 16 more by Dec 18: 17 left ends with 1 (under 5%), 20 with 4, and
+    # 15 runs out.
+    account = f"T YCMP Commuter {20 + left}"
+    rows = [[account, stamp(FIRST_MONDAY + timedelta(days=3 * n - 6, hours=18)),
+             "CPOS Worcester DC" if n % 2 else "CPOS Hampshire DC", "-1", str(20 + left - n - 1)] for n in range(20)]
+    w = build_wrapped(clean(rows), today=date(2026, 10, 31), history=account_history(rows))
+    assert w.personality == expected
+
+
+def test_weekend_ghost_barely_eats_on_campus_on_weekends():
+    weekdays = [d for d in range(42) if d % 7 < 5]  # Sep 7 is a Monday
+    assert wrapped_from(meals(weekdays, hour=18)).personality == WEEKEND_GHOST
+    assert wrapped_from(meals(weekdays + [5, 6], hour=18)).personality != WEEKEND_GHOST  # 2 of 32 is over 5%
+    assert wrapped_from(meals(weekdays[:29], hour=18)).personality != WEEKEND_GHOST  # too few visits to tell
+
+
+def test_coffee_addict_goes_for_coffee_four_times_a_week():
+    coffee = lambda days: [charge("CPOS Peets Coffee", stamp(FIRST_MONDAY + timedelta(days=d, hours=9)), 4.50) for d in days]
+    assert wrapped_from(coffee(range(0, 15, 2))).personality == COFFEE_ADDICT  # 8 in 2 weeks
+    assert wrapped_from(coffee([0, 2, 4, 6, 8, 10, 14])).personality != COFFEE_ADDICT  # 7 in 2 weeks
+    assert wrapped_from(coffee(range(13))).personality != COFFEE_ADDICT  # a lot, but in under 2 weeks
+
+
+def test_night_owl_snacker_buys_food_late_every_week():
+    snacks = lambda hour: [charge("CPOS Wasabi", stamp(FIRST_MONDAY + timedelta(days=d, hours=hour)), 6) for d in (0, 7, 14)]
+    assert wrapped_from(snacks(23)).personality == NIGHT_OWL_SNACKER
+    assert wrapped_from(snacks(25)).personality == NIGHT_OWL_SNACKER  # 1am is still that night
+    assert wrapped_from(snacks(20)).personality != NIGHT_OWL_SNACKER
+
+
+def test_lunch_lord_swipes_mostly_at_lunch():
+    assert wrapped_from(meals(range(21)) + meals(range(21, 30), hour=18)).personality == LUNCH_LORD  # 70%
+    assert wrapped_from(meals(range(20)) + meals(range(20, 30), hour=18)).personality != LUNCH_LORD  # 67%
+    assert wrapped_from(meals(range(19))).personality != LUNCH_LORD  # too few swipes to tell
 
 
 def test_no_purchases_is_an_error():

@@ -103,7 +103,7 @@ That's the fastest way to check a change against real data. On Windows use `.ven
   they use (`places_tried`, `meal_plan`, `meals_per_week`, `plan_meals_per_week`) are worked out in `stats.py`.
 - The user writes the blurbs in their own casual voice. Use their wording exactly; if a
   placeholder is needed, say it's one.
-- Pictures: `static/styles/imgs/<image>.png`, 400x600 on white. The user draws them; to crop a
+- Pictures: `static/styles/imgs/personalities/<image>.png`, 400x600 on white. The user draws them; to crop a
   drawing out of their PDF, redraw its vector paths with PyMuPDF on a blank page, leaving out the
   1x1 grid dots and the label, and render it centered (Pillow isn't installed). Renaming a
   personality means renaming its picture too (`git mv`).
