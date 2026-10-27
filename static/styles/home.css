@@ -168,12 +168,6 @@
   text-align: center;
   line-height: 1.6;
 }
-.home-btn-group {
-  gap: var(--dl-space-space-oneandhalfunits);
-  display: flex;
-  align-items: center;
-  flex-direction: row;
-}
 .home-hero-button1 {
   color: var(--dl-color-gray-white);
   font-size: 18px;
@@ -523,9 +517,6 @@
   .home-container01 {
     margin-bottom: var(--dl-space-space-unit);
   }
-  .home-btn-group {
-    flex-direction: column;
-  }
   .home-hero-button2 {
     margin-top: var(--dl-space-space-unit);
     margin-left: 0px;
@@ -593,12 +584,6 @@
   margin-bottom: var(--dl-space-space-unit);
   line-height: 1.5;
 }
-.home-howto .home-btn-group {
-  flex-wrap: wrap;
-}
-.home-howto input[type="file"] {
-  max-width: 100%;
-}
 .home-bookmarklet {
   display: inline-block;
   margin: var(--dl-space-space-halfunit) 0;
@@ -611,9 +596,4 @@
   background-color: #fde8e8;
   color: #8a1c1c;
   max-width: 640px;
-}
-.home-loading {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
 }

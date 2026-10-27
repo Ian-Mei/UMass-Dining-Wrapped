@@ -373,3 +373,11 @@ def test_every_page_gets_the_logo_as_its_icon(client):
     # Browsers ask for /favicon.ico on pages without the link (like /dev).
     response = client.get("/favicon.ico")
     assert response.status_code == 200 and response.mimetype == "image/jpeg"
+
+
+def test_home_page_only_offers_the_bookmarklet(client):
+    # One exported PDF gets cut to GET's row limit, so there's no upload button. /import still
+    # posts the bookmarklet's PDFs to /wrapped.
+    page = client.get("/").get_data(as_text=True)
+    assert 'href="javascript:' in page
+    assert 'type="file"' not in page and "Option 2" not in page

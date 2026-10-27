@@ -86,7 +86,7 @@
                 <p class="home-error">{{ error }}</p>
               {% endif %}
               <div class="home-howto">
-                <h2 class="heading2">Option 1: one click from GET</h2>
+                <h2 class="heading2">One click from GET</h2>
                 <ol>
                   <li>Drag this button to your bookmarks bar:
                     <a href="{{ bookmarklet }}" class="home-hero-button1 button home-bookmarklet"
@@ -98,22 +98,6 @@
                   <li>Click the <b>Dining Wrapped</b> bookmark while you're on GET.</li>
                 </ol>
               </div>
-              <form class="home-howto" method="post" action="{{ url_for('wrapped') }}" enctype="multipart/form-data" id="upload-form">
-                <h2 class="heading2">Option 2: upload your PDFs</h2>
-                <p>
-                  In <a href="https://get.cbord.com/umass/full/history.php" target="_blank" rel="noopener">GET's transaction history</a>,
-                  click <b>Export PDF</b>, then upload it here.
-                </p>
-                <p>
-                  Heads up: GET only puts your newest transactions in each PDF (as few as 14), so one PDF of a
-                  whole semester will be missing stuff. For a whole semester use Option 1. Otherwise export a few
-                  days at a time and upload all the PDFs together.
-                </p>
-                <div class="home-btn-group">
-                  <input type="file" name="pdfs" accept=".pdf,application/pdf" multiple required>
-                  <button type="submit" class="home-hero-button1 button">Get My Wrapped</button>
-                </div>
-              </form>
             </div>
           </div>
         </div>
@@ -164,8 +148,7 @@
                   </span>
                   <span class="question-text1">
                     <span>
-                      Whenever you run it. The bookmark grabs the current semester (or the one that just ended),
-                      and an uploaded PDF covers whatever dates it has.
+                      Whenever you run it. The bookmark grabs the current semester (or the one that just ended).
                     </span>
                   </span>
                 </div>
@@ -176,7 +159,7 @@
                   <span class="question-text1">
                     <span>
                       Yea, your Wrapped fits on a phone screen. Bookmarks are a pain on phones though, so do the GET
-                      part on your laptop, or upload the PDFs.
+                      part on your laptop.
                     </span>
                   </span>
                 </div>
@@ -273,18 +256,9 @@
         </div>
       </div>
     </div>
-    <canvas id="tv-screen" class="home-loading" hidden></canvas>
     <script
       data-section-id="navbar"
       src="https://unpkg.com/@teleporthq/teleport-custom-scripts"
     ></script>
-    <script src="{{ url_for('static', filename='scripts/loading.js') }}"></script>
-    <script>
-      document.getElementById("upload-form").addEventListener("submit", () => {
-        const canvas = document.getElementById("tv-screen");
-        canvas.hidden = false;
-        startLoadingScreen(canvas, {{ url_for('static', filename='imgs/umass.png')|tojson }});
-      });
-    </script>
   </body>
 </html>

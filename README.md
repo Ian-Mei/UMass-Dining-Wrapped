@@ -7,7 +7,7 @@ Not affiliated with UMass or UMass Dining.
 
 ## How people get their data in
 
-Nobody types their NetID or password into this site. There are two ways in:
+Nobody types their NetID or password into this site. The home page only offers the bookmarklet:
 
 1. **Bookmarklet.** The home page has a **Dining Wrapped** button to drag to the bookmarks bar.
    The user logs into GET normally, then clicks the bookmark. It runs inside their own GET tab and
@@ -17,9 +17,10 @@ Nobody types their NetID or password into this site. There are two ways in:
    `/import` checks each window with `/rows` and downloads a full one again in halves.
    Sources: [`static/scripts/bookmarklet.js`](static/scripts/bookmarklet.js) (the fetcher) and
    [`static/scripts/history_windows.js`](static/scripts/history_windows.js) (which windows).
-2. **Upload.** GET → View All Transaction History → **Export PDF**, then upload it on the home page.
-   The same row limit applies to each exported PDF, so for a whole semester export a few days at a
-   time and upload all the PDFs together (or use the bookmarklet).
+2. **Upload (no button).** `/wrapped` still takes exported PDFs (GET → View All Transaction History
+   → **Export PDF**) as `pdfs` form fields, which is what `/import` sends. The home page dropped its
+   upload button because each exported PDF is cut to the same row limit, so one PDF of a semester
+   misses rows; you'd need a few days per PDF.
 
 PDFs are parsed in memory and never written to disk.
 
