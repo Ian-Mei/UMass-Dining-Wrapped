@@ -54,8 +54,8 @@ const PersonalityWheel = (() => {
     let angle = 0, rise = 0, current = 0, browsing = false, frame = null;
 
     const render = () => {
-      // Pushed back by its radius so the front card sits at about its normal size.
-      ring.style.transform = `translateY(${rise}px) translateZ(${-radius * 0.8}px) rotateY(${angle}deg)`;
+      // Pushed back by its radius so the front card is exactly its normal size.
+      ring.style.transform = `translateY(${rise}px) translateZ(${-radius}px) rotateY(${angle}deg)`;
       const front = frontmost(cards.map((c) => c.slot), angle);
       cards.forEach((c, i) => {
         c.el.style.transform = `rotateY(${c.slot}deg) translateZ(${radius}px) scale(${0.6 + 0.4 * c.fade})`;

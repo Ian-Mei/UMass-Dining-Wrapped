@@ -233,22 +233,44 @@ section .text-container .text-box li{
 /* The personality wheel (static/scripts/personality-wheel.js turns it). */
 #personality {
   overflow: hidden;
+  flex-direction: column;
+}
+/* Sits the wheel a little above the middle, so the blurb isn't near the bottom. The space
+   shrinks away when the content needs it, so the screen never grows past the window. */
+#personality::after {
+  content: "";
+  flex: 0 1 10vh;
 }
 #personality .wheelscreen {
-  --card-w: clamp(96px, 18vh, 160px);
+  --card-w: clamp(110px, 25vh, 220px);
   width: 100%;
-  margin-bottom: 10vh;  /* sits a little above the middle, so the blurb isn't near the bottom */
   z-index: 1;
 }
 @media (max-width: 600px), (max-height: 720px) {
+  #personality::after {
+    flex-basis: 5vh;
+  }
+}
+/* Cards as big as the window's height leaves room for. */
+@media (max-height: 720px) {
   #personality .wheelscreen {
-    margin-bottom: 5vh;
+    --card-w: clamp(96px, 21vh, 220px);
+  }
+}
+@media (max-height: 600px) {
+  #personality .wheelscreen {
+    --card-w: clamp(96px, 18vh, 220px);
+  }
+}
+@media (max-width: 600px) {
+  #personality .wheelscreen h1 {
+    font-size: 1.5rem;  /* one line on a phone */
   }
 }
 #personality .wheelstage {
   position: relative;
   width: 100%;
-  height: calc(var(--card-w) * 1.5 + 40px);
+  height: calc(var(--card-w) * 1.5 + 24px);
   perspective: 1100px;
   overflow: hidden;
   touch-action: pan-y;  /* sideways drags turn the wheel; up and down still scrolls */
@@ -889,8 +911,11 @@ section.harvest { background: linear-gradient(160deg, #e0892b, #9c4a12); }
   #personality .wheeltitle {
     font-size: 26px;
   }
+  /* A long blurb scrolls inside the box so the screen still fits the window. */
   #personality .wheelblurb {
     font-size: 15px;
+    max-height: 5.4em;
+    overflow-y: auto;
   }
 }
 @media (max-height: 580px) {
