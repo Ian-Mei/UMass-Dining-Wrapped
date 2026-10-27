@@ -340,7 +340,7 @@ def test_home_page_has_no_fixed_widths_wider_than_a_phone():
 
 
 def test_feedback_form_is_linked_from_home_and_the_end_screen(client):
-    form = 'href="https://docs.google.com/forms/d/e/1FAIpQLSdJ23vnh_7Q0eL2NI6415G-4VDRiZK-JZpBnH_FGAPRVQapxg/viewform"'
+    form = f'href="{app_module.FEEDBACK_URL}"'
     assert form in client.get("/").get_data(as_text=True)
     page = upload(client, make_history_pdf([swipe("CPOS Worcester DC", "09/02/26 12:00:00 PM")])).get_data(as_text=True)
     assert form in page[page.index('<section id="end">'):]

@@ -586,6 +586,7 @@
   text-decoration: underline;
 }
 .question-text1 a {
+  color: inherit;
   text-decoration: underline;
 }
 .home-howto p {
