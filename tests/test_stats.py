@@ -1,11 +1,12 @@
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
 from wrapped import ParseError, build_wrapped
 from wrapped.personality import (AVATAR, AVERAGE_JOE, BELLA_HADID, BERK_BEAST, BIG_SPENDER, COFFEE_ADDICT, CONNOISSEUR,
                                  DOUBLE_TROUBLE, FRANK_FANATIC, GREEDY, HAMP_HEAD, LUNCH_LORD, NIGHT_OWL_SNACKER,
-                                 PERFECTLY_BALANCED, QUICK_EATER, WEEKEND_GHOST, WORCESTER_WARRIOR)
+                                 PERFECTLY_BALANCED, PERSONALITIES, QUICK_EATER, WEEKEND_GHOST, WORCESTER_WARRIOR)
 from wrapped.transactions import account_history
 from wrapped.transactions import clean
 
@@ -229,6 +230,19 @@ def test_perfectly_balanced_ends_the_semester_with_almost_no_swipes_left(left, e
     assert w.personality == expected
 
 
+@pytest.mark.parametrize("left, balanced", [(82, True), (100, False), (70, False)])
+def test_perfectly_balanced_on_an_unlimited_plan_is_about_dining_dollars(left, balanced):
+    # Unlimited swipes don't run out, so it's their dining dollars: $100 in 60 days, so $80 more
+    # by Dec 18. $82 left ends with $2 (under 5% of $182), $100 with $20, and $70 runs out.
+    rows = [["UMass Dining Dollars", stamp(FIRST_MONDAY + timedelta(days=3 * n - 6, hours=13)), "CPOS Tamales",
+             "-$5.00", f"${left + 100 - 5 * (n + 1):.2f}"] for n in range(20)]
+    rows += [swipe("CPOS Hampshire DC", stamp(FIRST_MONDAY + timedelta(days=d, hours=18)), "E Unlimited 250") for d in range(0, 54, 2)]
+    w = build_wrapped(clean(rows), today=date(2026, 10, 31), history=account_history(rows))
+    assert (PERFECTLY_BALANCED in w.personalities) == balanced
+    if balanced:
+        assert w.reasons["Perfectly Balanced"] == "At this pace you'll end the semester with just $2.00 in dining dollars left."
+
+
 def test_weekend_ghost_barely_eats_on_campus_on_weekends():
     weekdays = [d for d in range(42) if d % 7 < 5]  # Sep 7 is a Monday
     assert wrapped_from(meals(weekdays, hour=18)).personality == WEEKEND_GHOST
@@ -254,6 +268,49 @@ def test_lunch_lord_swipes_mostly_at_lunch():
     assert wrapped_from(meals(range(21)) + meals(range(21, 30), hour=18)).personality == LUNCH_LORD  # 70%
     assert wrapped_from(meals(range(20)) + meals(range(20, 30), hour=18)).personality != LUNCH_LORD  # 67%
     assert wrapped_from(meals(range(19))).personality != LUNCH_LORD  # too few swipes to tell
+
+
+def test_every_personality_they_match_main_one_first():
+    weekdays = [d for d in range(42) if d % 7 < 5]
+    coffee = [charge("CPOS Peets Coffee", stamp(FIRST_MONDAY + timedelta(days=d, hours=9)), 4.50) for d in weekdays if d % 7 < 4]
+    w = wrapped_from(meals(weekdays) + coffee)  # 4 coffees a week, lunch on weekdays only
+    assert w.personalities == [COFFEE_ADDICT, WEEKEND_GHOST, LUNCH_LORD]
+    assert w.personality == COFFEE_ADDICT
+    # 24 coffees from the first one to the last purchase 39 days later; 54 visits counting the coffees.
+    assert w.reasons == {
+        "Coffee Addict": "You made about 4.3 coffee runs a week.",
+        "Weekend Ghost": "None of your 54 visits were on a weekend.",
+        "Lunch Lord": "100% of your meal swipes were at lunch.",
+    }
+
+
+def test_the_reason_for_a_dining_hall_personality():
+    first = datetime(2026, 9, 7, 12)
+    rows = [swipe("CPOS Worcester DC" if d < 27 else "CPOS Franklin DC", stamp(first + timedelta(days=d))) for d in range(30)]
+    assert wrapped_from(rows).reasons["Worcester Warrior"] == "90% of your meal swipes were at Worcester."
+
+
+def test_average_joe_has_no_reason():
+    assert wrapped_from(meals(range(5))).reasons == {}
+
+
+def test_average_joe_only_when_nothing_else_matches():
+    assert wrapped_from(meals(range(5))).personalities == [AVERAGE_JOE]
+    assert AVERAGE_JOE not in wrapped_from(meals(range(30))).personalities  # a Lunch Lord
+
+
+def test_every_personality_is_on_the_wheel():
+    # The wheel only shows PERSONALITIES, so one left out of the list could never be shown.
+    from wrapped import personality
+    defined = {v.name for v in vars(personality).values() if isinstance(v, personality.Personality)}
+    assert defined == {p.name for p in PERSONALITIES} | {AVERAGE_JOE.name}
+
+
+def test_every_personality_has_a_picture():
+    pictures = Path(__file__).parent.parent / "static" / "styles" / "imgs" / "personalities"
+    for personality in [*PERSONALITIES, AVERAGE_JOE]:
+        assert (pictures / f"{personality.image}.png").is_file(), personality.name
+    assert len(PERSONALITIES) == 19 and AVERAGE_JOE not in PERSONALITIES
 
 
 def test_no_purchases_is_an_error():

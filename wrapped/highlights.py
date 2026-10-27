@@ -102,7 +102,8 @@ class Clock:
 
 @dataclass
 class FunFacts:
-    double_swipes: int
+    double_swipes: int       # every double swipe (Double Trouble counts these)
+    friends_swiped_in: int   # the same, leaving out Grab 'n Go (the "Swiped a friend in" fun fact)
     places_tried: int
     busiest_day: date
     busiest_day_count: int
@@ -321,18 +322,25 @@ def clock(food) -> Clock | None:
     )
 
 
+def double_swipes(swipes) -> int:
+    """Two swipes back to back at one place, or one row that took 2 or more."""
+    swipes = swipes.sort_values("timestamp")
+    gap = swipes["timestamp"].diff().dt.total_seconds()
+    same_place = swipes["location"].eq(swipes["location"].shift())
+    return int((same_place & (gap <= DOUBLE_SWIPE_SECONDS)).sum() + (swipes["amount"] - 1).clip(lower=0).sum())
+
+
 def fun_facts(food) -> FunFacts | None:
     if food.empty:
         return None
-    swipes = food[food["is_swipe"]].sort_values("timestamp")
-    gap = swipes["timestamp"].diff().dt.total_seconds()
-    same_place = swipes["location"].eq(swipes["location"].shift())
+    swipes = food[food["is_swipe"]]
     by_day = food["day"].value_counts().sort_index()
     busiest = by_day.idxmax()
     that_day = food[food["day"] == busiest].sort_values("timestamp")
     return FunFacts(
-        # Two swipes back to back at one place, or one row that took 2 or more.
-        double_swipes=int((same_place & (gap <= DOUBLE_SWIPE_SECONDS)).sum() + (swipes["amount"] - 1).clip(lower=0).sum()),
+        double_swipes=double_swipes(swipes),
+        # At Grab 'n Go a second meal is usually for later, not for a friend.
+        friends_swiped_in=double_swipes(swipes[~swipes["grab_n_go"].fillna(False).astype(bool)]),
         places_tried=int(food["spot"].nunique()),
         busiest_day=busiest,
         busiest_day_count=int(by_day[busiest]),
