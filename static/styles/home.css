@@ -553,7 +553,7 @@
   }
 }
 
-/* Getting-your-data instructions and upload form */
+/* Getting-your-data instructions */
 .home-howto {
   margin-top: var(--dl-space-space-twounits);
   text-align: left;
@@ -579,10 +579,6 @@
 .question-text1 a {
   color: inherit;
   text-decoration: underline;
-}
-.home-howto p {
-  margin-bottom: var(--dl-space-space-unit);
-  line-height: 1.5;
 }
 .home-bookmarklet {
   display: inline-block;

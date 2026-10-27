@@ -136,7 +136,7 @@ def save_upload(pdfs):
 def wrapped():
     pdfs = [f.read() for f in request.files.getlist("pdfs") if f.filename]
     if not pdfs:
-        return render_home("Choose your transaction history PDF first.", 400)
+        return render_home("No transaction history came through. Try the Dining Wrapped bookmark again from GET.", 400)
     saved_to = save_upload(pdfs) if uploads_dir() else None
     try:
         result, maybe_cut_off = build_from_pdfs(pdfs)
@@ -154,8 +154,9 @@ def wrapped():
 def build_from_pdfs(pdfs):
     """The Wrapped for these PDFs, and whether GET may have left rows out of them.
 
-    Two signs: a PDF as full as GET's smallest limit (catches a whole-semester manual export), or
-    a balance that drops more than the rows explain (catches a cut window in between). Plan pace
+    Two signs: a PDF as full as GET's smallest limit (a bookmarklet window that couldn't be split
+    further, or an exported PDF posted by hand), or a balance that drops more than the rows explain
+    (catches a cut window in between). Plan pace
     counts up to when the newest PDF was printed, not when it's uploaded.
     """
     per_pdf = [rows_from_pdf(pdf) for pdf in pdfs]

@@ -7,20 +7,18 @@ Not affiliated with UMass or UMass Dining.
 
 ## How people get their data in
 
-Nobody types their NetID or password into this site. The home page only offers the bookmarklet:
+Nobody types their NetID or password into this site. The home page has a **Dining Wrapped** button
+to drag to the bookmarks bar. The user logs into GET normally, then clicks the bookmark. It runs
+inside their own GET tab and opens this site's `/import` page, which asks the GET tab (via
+`postMessage`) for this semester's history from `historyPDF.php`, one date window at a time, then
+submits the PDFs to `/wrapped`. GET only returns the newest page of rows (17) per request and
+silently drops the rest, so `/import` checks each window with `/rows` and downloads a full one again
+in halves. Sources: [`static/scripts/bookmarklet.js`](static/scripts/bookmarklet.js) (the fetcher)
+and [`static/scripts/history_windows.js`](static/scripts/history_windows.js) (which windows).
 
-1. **Bookmarklet.** The home page has a **Dining Wrapped** button to drag to the bookmarks bar.
-   The user logs into GET normally, then clicks the bookmark. It runs inside their own GET tab and
-   opens this site's `/import` page, which asks the GET tab (via `postMessage`) for this semester's
-   history from `historyPDF.php`, one date window at a time, then submits the PDFs to `/wrapped`.
-   GET only returns the newest page of rows (17) per request and silently drops the rest, so
-   `/import` checks each window with `/rows` and downloads a full one again in halves.
-   Sources: [`static/scripts/bookmarklet.js`](static/scripts/bookmarklet.js) (the fetcher) and
-   [`static/scripts/history_windows.js`](static/scripts/history_windows.js) (which windows).
-2. **Upload (no button).** `/wrapped` still takes exported PDFs (GET → View All Transaction History
-   → **Export PDF**) as `pdfs` form fields, which is what `/import` sends. The home page dropped its
-   upload button because each exported PDF is cut to the same row limit, so one PDF of a semester
-   misses rows; you'd need a few days per PDF.
+There's no upload button: an exported PDF (GET → View All Transaction History → **Export PDF**) is
+cut to the same row limit, so one PDF of a semester misses rows. `/wrapped` still takes exported PDFs
+as `pdfs` form fields (that's what `/import` sends), which is handy for testing.
 
 PDFs are parsed in memory and never written to disk.
 
@@ -74,7 +72,7 @@ there: uploads should stay in memory.
 
 Visits are counted with [GoatCounter](https://www.goatcounter.com) (no cookies) when
 `WRAPPED_GOATCOUNTER_URL` is set, which only `render.yaml` does. Pages count as `/` (home),
-`/wrapped` (a Wrapped made; refreshing the results counts again) and `/error` (a failed upload).
+`/wrapped` (a Wrapped made; refreshing the results counts again) and `/error` (PDFs that failed to parse).
 count.js sends that path, the page title ("UMass Dining Wrapped"), the referrer and screen size,
 nothing from the page's content. It's pinned to a version with an integrity hash; to upgrade, take
 the new hash from [GoatCounter's list](https://www.goatcounter.com/help/countjs-versions).
