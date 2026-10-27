@@ -330,3 +330,8 @@ def test_goatcounter_counts_home_wrapped_and_failed_uploads(client, counting):
 def test_goatcounter_is_off_unless_configured(client):
     # Only the deploy sets WRAPPED_GOATCOUNTER_URL, so local runs and forks never count.
     assert counted_path(client.get("/").get_data(as_text=True)) is None
+
+
+def test_end_screen_has_no_facebook_link(client):
+    page = upload(client, make_history_pdf([swipe("CPOS Worcester DC", "09/02/26 12:00:00 PM")])).get_data(as_text=True)
+    assert "facebook.com" not in page[page.index('<section id="end">'):]
