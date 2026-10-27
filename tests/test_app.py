@@ -10,7 +10,7 @@ from waitress.proxy_headers import proxy_headers_middleware
 from werkzeug.test import Client
 
 import app as app_module
-from app import SERVE_OPTIONS, app, build_from_pdfs
+from app import SERVE_OPTIONS, app, build_from_pdfs, name_on
 
 from .conftest import charge, make_history_pdf, swipe
 
@@ -347,3 +347,7 @@ def test_stats_card_shows_their_first_name(client):
     page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
     card = page[page.index('<section id = "card">'):page.index('<section id="end">')]
     assert "text-wrapper-4" not in card
+
+
+def test_an_unreadable_name_is_left_off_instead_of_failing():
+    assert name_on([b"not a pdf", make_history_pdf([], name="JORDAN  SMITH")]) is None

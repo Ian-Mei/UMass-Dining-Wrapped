@@ -150,4 +150,9 @@ def test_first_name():
     # GET writes "FIRST  LAST" (two spaces with no middle name) or "FIRST MIDDLE LAST".
     assert first_name(make_history_pdf([], name="JORDAN  SMITH")) == "Jordan"
     assert first_name(make_history_pdf([], name="MARY-KATE ANN LEE")) == "Mary-Kate"
+    assert first_name(make_history_pdf([], name="JOSÉ  GARCIA")) == "José"
+    # The real export draws each word on its own.
+    assert first_name(make_history_pdf([], name="JORDAN  SMITH", word_by_word=True)) == "Jordan"
     assert first_name(make_history_pdf([])) is None
+    # Names are in capitals; anything else under "UMass Amherst" isn't one.
+    assert first_name(make_history_pdf([], name="Transaction History")) is None

@@ -155,8 +155,13 @@ def build_from_pdfs(pdfs):
 
 
 def name_on(pdfs):
-    """First name for the stats card, from the first PDF that has one."""
-    return next(filter(None, map(first_name, pdfs)), None)
+    """First name for the stats card, from the first PDF that has one. It's only for show, so a
+    PDF it can't read leaves the name off instead of failing the request."""
+    try:
+        return next(filter(None, map(first_name, pdfs)), None)
+    except Exception:
+        app.logger.exception("Couldn't read the name from an upload")
+        return None
 
 
 def render_wrapped(result, maybe_cut_off=False, name=None):

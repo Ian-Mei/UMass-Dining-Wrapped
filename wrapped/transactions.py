@@ -68,11 +68,13 @@ def printed_date(data: bytes) -> date | None:
 def first_name(data: bytes) -> str | None:
     """The account holder's first name, from the "JORDAN  SMITH" line under "UMass Amherst"."""
     with open_pdf(data) as doc:
-        lines = [line.strip() for line in (doc[0].get_text() if len(doc) else "").splitlines()]
-    if "UMass Amherst" not in lines or lines.index("UMass Amherst") + 1 >= len(lines):
+        text = doc[0].get_text() if len(doc) else ""
+    match = re.search(r"^[ \t]*UMass Amherst[ \t]*\n[ \t]*(.+)$", text, re.M | re.I)
+    # GET writes names in capitals, so another line under the header (or a blank name) isn't taken.
+    if not match or not match[1].isupper():
         return None
-    name = lines[lines.index("UMass Amherst") + 1].split()
-    return name[0].title() if name and re.fullmatch(r"[A-Za-z'-]+", name[0]) else None
+    first = match[1].split()[0]
+    return first.title() if re.fullmatch(r"[^\W\d_]+(?:['-][^\W\d_]+)*", first) else None
 
 
 def count_rows(data: bytes) -> int:
