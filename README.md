@@ -61,6 +61,14 @@ Behind a proxy, the app uses the public address from the proxy's `X-Forwarded-Pr
 `X-Forwarded-Host` headers, so the bookmarklet points at it. If the proxy doesn't send those, set
 `WRAPPED_PUBLIC_URL` (e.g. `https://wrapped.example.com`).
 
+## Deploying
+
+`render.yaml` sets the app up on [Render](https://render.com)'s free plan: in the dashboard, New >
+Blueprint, pick this repo, and it builds from `requirements.txt` and runs `python app.py` (waitress
+on Render's `PORT`). Every push to `main` redeploys. The free plan sleeps after 15 minutes without
+visits, so the first visit after that takes a little while to load. Don't set `WRAPPED_SAVE_UPLOADS`
+there: uploads should stay in memory.
+
 ## Notes
 
 - Only charges count. Deposits, transfers and refunds are dropped.

@@ -186,4 +186,5 @@ def too_large(_):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     print(f"Serving on http://localhost:{port}")
-    serve(app, host="0.0.0.0", port=port)
+    # Waitress drops X-Forwarded-* headers by default; keep them for ProxyFix above.
+    serve(app, host="0.0.0.0", port=port, clear_untrusted_proxy_headers=False)
