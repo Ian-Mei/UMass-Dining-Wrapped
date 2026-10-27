@@ -1,4 +1,5 @@
 import io
+import re
 from urllib.parse import unquote
 
 import pytest
@@ -293,3 +294,27 @@ def test_see_other_personalities_when_there_are_several(client):
     assert '["Coffee Addict", "Weekend Ghost", "Lunch Lord"]' in page.replace("&#34;", '"')
     assert 'data-reason="100% of your meal swipes were at lunch."' in page
     assert '<p class="wheelreason">You made about' in page  # the main one's, before the wheel lands
+
+
+def counted_path(page):
+    """The path GoatCounter is told to count for this page, or None if it isn't counted."""
+    match = re.search(r"window\.goatcounter = \{path: \"([^\"]*)\"\}", page)
+    if match:
+        assert 'data-goatcounter="https://umass-wrapped.goatcounter.com/count"' in page
+    return match and match[1]
+
+
+def test_goatcounter_counts_home_wrapped_and_errors_separately(client):
+    assert counted_path(client.get("/").get_data(as_text=True)) == "/"
+    rows = [swipe("CPOS Worcester DC", "09/02/26 12:00:00 PM")]
+    assert counted_path(upload(client, make_history_pdf(rows)).get_data(as_text=True)) == "/wrapped"
+    # A failed upload renders the home page at /wrapped; it mustn't count as a Wrapped.
+    assert counted_path(upload(client, b"not a pdf").get_data(as_text=True)) == "/error"
+
+
+def test_goatcounter_is_off_in_debug_mode(client):
+    app.debug = True
+    try:
+        assert counted_path(client.get("/").get_data(as_text=True)) is None
+    finally:
+        app.debug = False

@@ -69,6 +69,10 @@ on Render's `PORT`). Every push to `main` redeploys. The free plan sleeps after 
 visits, so the first visit after that takes a little while to load. Don't set `WRAPPED_SAVE_UPLOADS`
 there: uploads should stay in memory.
 
+Visits are counted with [GoatCounter](https://www.goatcounter.com) (no cookies): `/` for the home
+page, `/wrapped` for each Wrapped made, `/error` for a failed upload. Only that path is counted,
+nothing from the page. It's off in debug mode, and GoatCounter skips localhost.
+
 ## Notes
 
 - Only charges count. Deposits, transfers and refunds are dropped.

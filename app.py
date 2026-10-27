@@ -22,6 +22,8 @@ BOOKMARKLET_SOURCE = Path(__file__).parent / "static" / "scripts" / "bookmarklet
 SAVE_UPLOADS_DIR = os.environ.get("WRAPPED_SAVE_UPLOADS")
 # In debug mode (flask --app app run --debug) uploads are saved here unless the above is set.
 DEBUG_UPLOADS_DIR = "debug_uploads"
+# Visit counts; see templates/_goatcounter.html.
+GOATCOUNTER_URL = "https://umass-wrapped.goatcounter.com/count"
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
@@ -29,6 +31,12 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 # matches the page it opens. Not X-Forwarded-Host: anyone can send it, and it would decide where
 # the bookmarklet sends people's PDFs. Render keeps the real Host; elsewhere set WRAPPED_PUBLIC_URL.
 SERVE_OPTIONS = {"host": "0.0.0.0", "trusted_proxy": "*", "trusted_proxy_headers": {"x-forwarded-proto"}}
+
+
+@app.context_processor
+def analytics():
+    # Not in debug mode, so /dev re-renders don't count.
+    return {"goatcounter": None if app.debug else GOATCOUNTER_URL}
 
 
 @app.template_filter()

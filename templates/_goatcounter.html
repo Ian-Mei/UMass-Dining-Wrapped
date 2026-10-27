@@ -1,0 +1,6 @@
+{# Visit counts (goatcounter.com, no cookies). Pages name the path to count, so a failed upload at
+   /wrapped isn't counted as a Wrapped. Nothing from the page is sent. #}
+{% if goatcounter %}
+    <script>window.goatcounter = {path: {{ count_path|tojson }}};</script>
+    <script data-goatcounter="{{ goatcounter }}" async src="//gc.zgo.at/count.js"></script>
+{% endif %}
