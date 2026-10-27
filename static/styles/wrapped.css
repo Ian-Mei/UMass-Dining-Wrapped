@@ -557,6 +557,9 @@ section .text-container .text-box li{
   letter-spacing: -1px;
   line-height: 20px;
   white-space: nowrap;
+  /* Their first name; a long one ends in "..." instead of running into "Fall 26 Wrapped". */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #card .info-card .umassdiningwrapped {

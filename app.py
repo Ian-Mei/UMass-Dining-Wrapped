@@ -10,7 +10,7 @@ from waitress import serve
 from wrapped import ParseError, build_wrapped
 from wrapped.personality import wheel_cards
 from wrapped.transactions import (
-    GET_SMALLEST_LIMIT, MAYBE_CUT_OFF_ROWS, account_history, balance_gaps, clean, count_rows, merge_rows, printed_date,
+    GET_SMALLEST_LIMIT, MAYBE_CUT_OFF_ROWS, account_history, balance_gaps, clean, count_rows, first_name, merge_rows, printed_date,
     rows_from_pdf, transaction_count,
 )
 
@@ -142,7 +142,7 @@ def wrapped():
         if saved_to:
             (saved_to / "error.txt").write_text(traceback.format_exc(), encoding="utf-8")
         raise
-    return render_wrapped(result, maybe_cut_off)
+    return render_wrapped(result, maybe_cut_off, name_on(pdfs))
 
 
 def build_from_pdfs(pdfs):
@@ -161,9 +161,19 @@ def build_from_pdfs(pdfs):
     return result, maybe_cut_off
 
 
-def render_wrapped(result, maybe_cut_off=False):
+def name_on(pdfs):
+    """First name for the stats card, from the first PDF that has one. It's only for show, so a
+    PDF it can't read leaves the name off instead of failing the request."""
+    try:
+        return next(filter(None, map(first_name, pdfs)), None)
+    except Exception:
+        app.logger.exception("Couldn't read the name from an upload")
+        return None
+
+
+def render_wrapped(result, maybe_cut_off=False, name=None):
     return render_template(
-        "wrapped.html", w=result, maybe_cut_off=maybe_cut_off, wheel=wheel_cards(result.personalities), count_path="/wrapped",
+        "wrapped.html", w=result, maybe_cut_off=maybe_cut_off, wheel=wheel_cards(result.personalities), count_path="/wrapped", name=name,
     )
 
 
@@ -193,7 +203,8 @@ def dev_run(run):
     run_dir = (folder / run).resolve()
     if run_dir.parent != folder or not run_dir.is_dir():
         abort(404)
-    return render_wrapped(*build_from_pdfs([p.read_bytes() for p in sorted(run_dir.glob("*.pdf"))]))
+    pdfs = [p.read_bytes() for p in sorted(run_dir.glob("*.pdf"))]
+    return render_wrapped(*build_from_pdfs(pdfs), name_on(pdfs))
 
 
 @app.errorhandler(413)

@@ -11,7 +11,7 @@ from waitress.proxy_headers import proxy_headers_middleware
 from werkzeug.test import Client
 
 import app as app_module
-from app import SERVE_OPTIONS, app, build_from_pdfs
+from app import SERVE_OPTIONS, app, build_from_pdfs, name_on
 
 from .conftest import charge, make_history_pdf, swipe
 
@@ -344,3 +344,24 @@ def test_feedback_form_is_linked_from_home_and_the_end_screen(client):
     assert form in client.get("/").get_data(as_text=True)
     page = upload(client, make_history_pdf([swipe("CPOS Worcester DC", "09/02/26 12:00:00 PM")])).get_data(as_text=True)
     assert form in page[page.index('<section id="end">'):]
+
+
+def test_end_screen_has_no_facebook_link(client):
+    page = upload(client, make_history_pdf([swipe("CPOS Worcester DC", "09/02/26 12:00:00 PM")])).get_data(as_text=True)
+    assert "facebook.com" not in page[page.index('<section id="end">'):]
+
+
+def test_stats_card_shows_their_first_name(client):
+    rows = [swipe("CPOS Worcester DC", "09/02/26 12:00:00 PM")]
+    page = upload(client, make_history_pdf(rows, name="JORDAN  SMITH")).get_data(as_text=True)
+    card = page[page.index('<section id = "card">'):page.index('<section id="end">')]
+    assert ">Jordan</div>" in card
+    assert "@ian.meiii" not in page
+    # No name in the PDF: leave the line off rather than show someone else's.
+    page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
+    card = page[page.index('<section id = "card">'):page.index('<section id="end">')]
+    assert "text-wrapper-4" not in card
+
+
+def test_an_unreadable_name_is_left_off_instead_of_failing():
+    assert name_on([b"not a pdf", make_history_pdf([], name="JORDAN  SMITH")]) is None

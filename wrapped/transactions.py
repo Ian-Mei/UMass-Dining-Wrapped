@@ -65,6 +65,18 @@ def printed_date(data: bytes) -> date | None:
     return datetime.strptime(match.group(1), "%B %d, %Y").date() if match else None
 
 
+def first_name(data: bytes) -> str | None:
+    """The account holder's first name, from the "JORDAN  SMITH" line under "UMass Amherst"."""
+    with open_pdf(data) as doc:
+        text = doc[0].get_text() if len(doc) else ""
+    match = re.search(r"^[ \t]*UMass Amherst[ \t]*\n[ \t]*(.+)$", text, re.M | re.I)
+    # GET writes names in capitals, so another line under the header (or a blank name) isn't taken.
+    if not match or not match[1].isupper():
+        return None
+    first = match[1].split()[0]
+    return first.title() if re.fullmatch(r"[^\W\d_]+(?:['-][^\W\d_]+)*", first) else None
+
+
 def count_rows(data: bytes) -> int:
     """Number of transactions in a history PDF."""
     return transaction_count(rows_from_pdf(data))
