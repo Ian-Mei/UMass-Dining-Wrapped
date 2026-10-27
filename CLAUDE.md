@@ -8,7 +8,7 @@ README.md covers setup, layout and the two ways data gets in (bookmarklet and ma
 
 ```sh
 python -m pytest                       # Python tests (synthetic PDFs from tests/conftest.py)
-node --test tests/                     # JS tests: history_windows.js, explorer.js helpers
+node --test tests/                     # JS tests: history_windows.js, explorer.js, personality-wheel.js helpers
 flask --app app run --debug            # dev server; saves every upload to debug_uploads/
 python -m wrapped path/to/history.pdf  # print stats for local PDFs
 ```
@@ -35,7 +35,7 @@ That's the fastest way to check a change against real data. On Windows use `.ven
 - `wrapped/stats.py`: swipe table, vendor table (Top Spots), laundry, `build_wrapped`.
 - `wrapped/highlights.py`: everything newer: plan run-out projection, routine, streak calendar,
   clock, fun facts, Blue Wall, Harvest Market, top-ups, explorer data, raw-data sections.
-- `wrapped/personality.py`: personality rules (first match wins).
+- `wrapped/personality.py`: personality rules (everyone gets every match; the first is their main one).
 - `templates/wrapped.html` + `static/styles/wrapped.css`: the results screens.
 - `static/scripts/explorer.js`: Explore your days / places. `history_windows.js`: download windows.
   `bookmarklet.js`: runs on GET, only fetches what `/import` asks for (see "Bookmarklet" below).

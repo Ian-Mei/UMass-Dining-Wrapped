@@ -299,6 +299,13 @@ def test_average_joe_only_when_nothing_else_matches():
     assert AVERAGE_JOE not in wrapped_from(meals(range(30))).personalities  # a Lunch Lord
 
 
+def test_every_personality_is_on_the_wheel():
+    # The wheel only shows PERSONALITIES, so one left out of the list could never be shown.
+    from wrapped import personality
+    defined = {v.name for v in vars(personality).values() if isinstance(v, personality.Personality)}
+    assert defined == {p.name for p in PERSONALITIES} | {AVERAGE_JOE.name}
+
+
 def test_every_personality_has_a_picture():
     pictures = Path(__file__).parent.parent / "static" / "styles" / "imgs" / "personalities"
     for personality in [*PERSONALITIES, AVERAGE_JOE]:

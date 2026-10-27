@@ -178,7 +178,8 @@ def matches(wrapped):
     if bella_hadid(wrapped):
         yield BELLA_HADID, f"You averaged {wrapped.meals_per_week:.1f} meal swipes a week."
     if double_trouble(wrapped):
-        yield DOUBLE_TROUBLE, f"{wrapped.highlights.fun.double_swipes} of your {wrapped.total_swipes} meal swipes were double swipes."
+        doubles = wrapped.highlights.fun.double_swipes
+        yield DOUBLE_TROUBLE, f"You double swiped {plural(doubles, 'time')} in {wrapped.total_swipes} meal swipes."
     if perfectly_balanced(wrapped):
         plan = balanced_plan(wrapped)
         what = "meal swipes" if plan.is_meals else "dining dollars"

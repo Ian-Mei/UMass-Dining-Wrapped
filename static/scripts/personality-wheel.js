@@ -51,7 +51,8 @@ const PersonalityWheel = (() => {
     }));
     const cardWidth = () => cards[0].el.offsetWidth;
     let radius = radiusFor(cards.length, cardWidth());
-    let angle = 0, rise = 0, current = 0, browsing = false, frame = null;
+    // ready: their cards are in place and the arrows and dragging can turn the wheel.
+    let angle = 0, rise = 0, current = 0, browsing = false, ready = false, frame = null;
 
     const render = () => {
       // Pushed back by its radius so the front card is exactly its normal size.
@@ -86,6 +87,7 @@ const PersonalityWheel = (() => {
       info.querySelector(".wheelreason").textContent = card.reason;
       if (browsing) count.textContent = `${current + 1} of ${owned.length}`;
       root.classList.add("landed");
+      if (more) more.disabled = false;
     };
 
     const turnTo = (index) => {
@@ -97,6 +99,7 @@ const PersonalityWheel = (() => {
 
     // Their cards close up into a short arc around the main one; the rest fade away.
     const browse = () => {
+      if (browsing || !root.classList.contains("landed")) return;  // not until the spin has landed
       browsing = true;
       root.classList.add("browsing");
       const theirs = owned.map((name) => cards.find((c) => c.name === name));
@@ -113,6 +116,7 @@ const PersonalityWheel = (() => {
       }, () => {
         cards.filter((c) => !goal.has(c)).forEach((c) => c.el.remove());
         cards = theirs;
+        ready = true;
         turnTo(1);
       });
     };
@@ -129,15 +133,16 @@ const PersonalityWheel = (() => {
     };
 
     if (more) {
+      more.disabled = true;  // until the spin lands
       more.addEventListener("click", browse);
-      root.querySelector(".wheelprev").addEventListener("click", () => turnTo(current - 1));
-      root.querySelector(".wheelnext").addEventListener("click", () => turnTo(current + 1));
+      root.querySelector(".wheelprev").addEventListener("click", () => ready && turnTo(current - 1));
+      root.querySelector(".wheelnext").addEventListener("click", () => ready && turnTo(current + 1));
     }
 
     // Once browsing, dragging sideways turns the wheel and lets go on the nearest card.
     let dragX = null, dragAngle = 0;
     stage.addEventListener("pointerdown", (event) => {
-      if (!browsing) return;
+      if (!ready) return;
       cancelAnimationFrame(frame);
       dragX = event.clientX;
       dragAngle = angle;
@@ -156,6 +161,14 @@ const PersonalityWheel = (() => {
     };
     stage.addEventListener("pointerup", letGo);
     stage.addEventListener("pointercancel", letGo);
+
+    // Cards are sized by the window's height, so the ring's radius follows it. (Not while their
+    // cards are closing up: that animation sets the radius itself.)
+    window.addEventListener("resize", () => {
+      if (browsing && !ready) return;
+      radius = radiusFor(cards.length, cardWidth());
+      render();
+    });
 
     // Hidden below until the screen shows, then it plays once.
     rise = stage.offsetHeight;
