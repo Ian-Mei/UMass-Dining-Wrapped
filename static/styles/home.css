@@ -585,6 +585,9 @@
 .home-howto a:not(.button) {
   text-decoration: underline;
 }
+.question-text1 a {
+  text-decoration: underline;
+}
 .home-howto p {
   margin-bottom: var(--dl-space-space-unit);
   line-height: 1.5;
