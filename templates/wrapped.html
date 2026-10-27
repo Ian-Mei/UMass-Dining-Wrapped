@@ -6,7 +6,7 @@
     <title>UMass Dining Wrapped</title>
     <link rel="icon" href="{{ url_for('static', filename='styles/imgs/UMassDiningWrapped.jpg') }}">
     <link href="{{ url_for('static', filename='styles/wrapped.css') }}" rel="stylesheet" />
-    {% with count_path = "/wrapped" %}{% include "_goatcounter.html" %}{% endwith %}
+    {% include "_goatcounter.html" %}
 </head>
 <body>
         {% set swipes = w.swipes %}

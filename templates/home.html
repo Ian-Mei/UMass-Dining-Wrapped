@@ -59,7 +59,7 @@
         }
       }
     </style>
-    {% with count_path = "/error" if error else "/" %}{% include "_goatcounter.html" %}{% endwith %}
+    {% include "_goatcounter.html" %}
   </head>
   <body>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/style.css') }}"/>

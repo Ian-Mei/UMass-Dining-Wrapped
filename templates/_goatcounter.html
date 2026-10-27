@@ -1,6 +1,9 @@
-{# Visit counts (goatcounter.com, no cookies). Pages name the path to count, so a failed upload at
-   /wrapped isn't counted as a Wrapped. Nothing from the page is sent. #}
+{# Visit counts (goatcounter.com, no cookies). Views pass count_path, so a failed upload at /wrapped
+   isn't counted as a Wrapped. The results page holds the person's purchases, so count.js is pinned
+   to a version and its hash (from goatcounter.com/help/countjs-versions); the browser won't run
+   anything else. #}
 {% if goatcounter %}
-    <script>window.goatcounter = {path: {{ count_path|tojson }}};</script>
-    <script data-goatcounter="{{ goatcounter }}" async src="//gc.zgo.at/count.js"></script>
+    <script>window.goatcounter = {path: {{ count_path|default(request.path)|tojson }}};</script>
+    <script data-goatcounter="{{ goatcounter }}" async src="https://gc.zgo.at/count.v4.js"
+            crossorigin="anonymous" integrity="sha384-nRw6qfbWyJha9LhsOtSb2YJDyZdKvvCFh0fJYlkquSFjUxp9FVNugbfy8q1jdxI+"></script>
 {% endif %}
