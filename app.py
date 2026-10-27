@@ -6,7 +6,6 @@ from urllib.parse import quote
 
 from flask import Flask, abort, jsonify, render_template, render_template_string, request
 from waitress import serve
-from werkzeug.middleware.proxy_fix import ProxyFix
 
 from wrapped import ParseError, build_wrapped
 from wrapped.personality import wheel_cards
@@ -26,9 +25,10 @@ DEBUG_UPLOADS_DIR = "debug_uploads"
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
-# Behind a proxy (Render, Fly, nginx), use the https:// address it forwards, so the bookmarklet's
-# origin check matches the page it opens.
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+# Behind a proxy (Render), take https from X-Forwarded-Proto so the bookmarklet's origin check
+# matches the page it opens. Not X-Forwarded-Host: anyone can send it, and it would decide where
+# the bookmarklet sends people's PDFs. Render keeps the real Host; elsewhere set WRAPPED_PUBLIC_URL.
+SERVE_OPTIONS = {"host": "0.0.0.0", "trusted_proxy": "*", "trusted_proxy_headers": {"x-forwarded-proto"}}
 
 
 @app.template_filter()
@@ -50,7 +50,7 @@ def hour_label(hour):
 
 def public_origin():
     # WRAPPED_PUBLIC_URL overrides the address the request came in on (e.g. if the proxy
-    # doesn't send X-Forwarded-Proto / X-Forwarded-Host).
+    # changes the Host header or doesn't send X-Forwarded-Proto).
     return os.environ.get("WRAPPED_PUBLIC_URL", request.host_url).rstrip("/")
 
 
@@ -185,6 +185,5 @@ def too_large(_):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    print(f"Serving on http://localhost:{port}")
-    # Waitress drops X-Forwarded-* headers by default; keep them for ProxyFix above.
-    serve(app, host="0.0.0.0", port=port, clear_untrusted_proxy_headers=False)
+    print(f"Serving on port {port} (http://localhost:{port})", flush=True)
+    serve(app, port=port, **SERVE_OPTIONS)

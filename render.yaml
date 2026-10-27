@@ -5,9 +5,12 @@ services:
     name: umass-dining-wrapped
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    branch: main
+    buildCommand: pip install -r requirements.txt -c constraints.txt
     startCommand: python app.py
     healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.5
+      - key: PYTHONUNBUFFERED
+        value: "1"
