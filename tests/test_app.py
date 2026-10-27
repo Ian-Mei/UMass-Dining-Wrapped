@@ -335,3 +335,15 @@ def test_goatcounter_is_off_unless_configured(client):
 def test_end_screen_has_no_facebook_link(client):
     page = upload(client, make_history_pdf([swipe("CPOS Worcester DC", "09/02/26 12:00:00 PM")])).get_data(as_text=True)
     assert "facebook.com" not in page[page.index('<section id="end">'):]
+
+
+def test_stats_card_shows_their_first_name(client):
+    rows = [swipe("CPOS Worcester DC", "09/02/26 12:00:00 PM")]
+    page = upload(client, make_history_pdf(rows, name="JORDAN  SMITH")).get_data(as_text=True)
+    card = page[page.index('<section id = "card">'):page.index('<section id="end">')]
+    assert ">Jordan</div>" in card
+    assert "@ian.meiii" not in page
+    # No name in the PDF: leave the line off rather than show someone else's.
+    page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
+    card = page[page.index('<section id = "card">'):page.index('<section id="end">')]
+    assert "text-wrapper-4" not in card

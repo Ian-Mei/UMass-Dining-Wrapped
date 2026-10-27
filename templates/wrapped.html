@@ -473,7 +473,7 @@
               </div>
               <div class="rectangle"></div>
               <div class="text-wrapper-3">{{ w.semester_short }} Wrapped</div>
-              <div class="text-wrapper-4">@ian.meiii</div>
+              {% if name %}<div class="text-wrapper-4">{{ name }}</div>{% endif %}
               <img class="umassdiningwrapped" src="{{ url_for('static', filename='styles/imgs/UMassDiningWrapped.jpg') }}" />
               <div class="text-wrapper-5">Mealswipes Used</div>
               <div class="text-wrapper-6">{{ w.total_swipes }}</div>

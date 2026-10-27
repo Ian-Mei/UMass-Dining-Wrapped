@@ -65,6 +65,16 @@ def printed_date(data: bytes) -> date | None:
     return datetime.strptime(match.group(1), "%B %d, %Y").date() if match else None
 
 
+def first_name(data: bytes) -> str | None:
+    """The account holder's first name, from the "JORDAN  SMITH" line under "UMass Amherst"."""
+    with open_pdf(data) as doc:
+        lines = [line.strip() for line in (doc[0].get_text() if len(doc) else "").splitlines()]
+    if "UMass Amherst" not in lines or lines.index("UMass Amherst") + 1 >= len(lines):
+        return None
+    name = lines[lines.index("UMass Amherst") + 1].split()
+    return name[0].title() if name and re.fullmatch(r"[A-Za-z'-]+", name[0]) else None
+
+
 def count_rows(data: bytes) -> int:
     """Number of transactions in a history PDF."""
     return transaction_count(rows_from_pdf(data))

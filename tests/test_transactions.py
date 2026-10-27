@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from wrapped.transactions import ParseError, account_history, balance_gaps, clean, count_rows, printed_date, parse_pdfs, parse_timestamp, rows_from_pdf
+from wrapped.transactions import ParseError, account_history, balance_gaps, clean, count_rows, first_name, printed_date, parse_pdfs, parse_timestamp, rows_from_pdf
 
 from .conftest import charge, make_history_pdf, swipe
 
@@ -144,3 +144,10 @@ def test_printed_date():
     from datetime import date
     assert printed_date(make_history_pdf([], printed=date(2026, 10, 19))) == date(2026, 10, 19)
     assert printed_date(make_history_pdf([])) is None
+
+
+def test_first_name():
+    # GET writes "FIRST  LAST" (two spaces with no middle name) or "FIRST MIDDLE LAST".
+    assert first_name(make_history_pdf([], name="JORDAN  SMITH")) == "Jordan"
+    assert first_name(make_history_pdf([], name="MARY-KATE ANN LEE")) == "Mary-Kate"
+    assert first_name(make_history_pdf([])) is None
