@@ -9,6 +9,7 @@ from waitress import serve
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from wrapped import ParseError, build_wrapped
+from wrapped.personality import wheel_cards
 from wrapped.transactions import (
     GET_SMALLEST_LIMIT, MAYBE_CUT_OFF_ROWS, account_history, balance_gaps, clean, count_rows, merge_rows, printed_date,
     rows_from_pdf, transaction_count,
@@ -145,7 +146,7 @@ def build_from_pdfs(pdfs):
 
 
 def render_wrapped(result, maybe_cut_off=False):
-    return render_template("wrapped.html", w=result, maybe_cut_off=maybe_cut_off)
+    return render_template("wrapped.html", w=result, maybe_cut_off=maybe_cut_off, wheel=wheel_cards(result.personalities))
 
 
 # Dev only (flask --app app run --debug): re-render saved uploads without going through GET.

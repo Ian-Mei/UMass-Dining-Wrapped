@@ -6,7 +6,7 @@ from datetime import date
 import pandas as pd
 
 from .highlights import DOUBLE_SWIPE_SECONDS, HARVEST_MARKET, SEMESTER_ENDS, Highlights, build_highlights, display_name
-from .personality import Personality, pick_personality
+from .personality import pick_personalities
 from .transactions import GRAB_N_GO_HALLS, LATE_NIGHT_HALLS, ParseError
 
 HALL_ORDER = ["Hamp", "Worcester", "Berk", "Frank"]
@@ -48,7 +48,12 @@ class Wrapped:
     late_snacks_per_week: float | None  # dining dollar food purchases between 9pm and 4am
     laundry: Laundry | None
     highlights: Highlights
-    personality: Personality
+    personalities: list  # every Personality they match, main one first
+    reasons: dict        # personality name -> why they got it (Average Joe has none)
+
+    @property
+    def personality(self):
+        return self.personalities[0]
 
     @property
     def favorite_hall(self):
@@ -250,7 +255,8 @@ def build_wrapped(tx: pd.DataFrame, today=None, history=None) -> Wrapped:
         late_snacks_per_week=late_snacks_per_week,
         laundry=laundry_stats(tx),
         highlights=build_highlights(tx, semester, today, history),
-        personality=None,
+        personalities=None,
+        reasons=None,
     )
-    wrapped.personality = pick_personality(wrapped)
+    wrapped.personalities, wrapped.reasons = pick_personalities(wrapped)
     return wrapped

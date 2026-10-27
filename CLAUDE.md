@@ -99,7 +99,9 @@ That's the fastest way to check a change against real data. On Windows use `.ven
 
 ## Personalities
 
-- Rules and thresholds live in `wrapped/personality.py` (first match wins); the per-person numbers
+- Rules and thresholds live in `wrapped/personality.py`. Everyone gets every personality they match
+  (`Wrapped.personalities`); the first match is their main one, and Average Joe only when none match.
+  The results page shows them on a spinning wheel (`static/scripts/personality-wheel.js`); the per-person numbers
   they use (`places_tried`, `meal_plan`, `meals_per_week`, `plan_meals_per_week`) are worked out in `stats.py`.
 - The user writes the blurbs in their own casual voice. Use their wording exactly; if a
   placeholder is needed, say it's one.

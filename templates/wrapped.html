@@ -253,10 +253,10 @@
                   <span class="itemname">Places tried</span>
                   <span class="itemvalue">{{ f.places_tried }}<span>Spots</span></span>
                 </div>
-                {% if f.double_swipes %}
+                {% if f.friends_swiped_in %}
                 <div class="listitem">
                   <span class="itemname">Swiped a friend in</span>
-                  <span class="itemvalue">{{ f.double_swipes }}<span>Times</span></span>
+                  <span class="itemvalue">{{ f.friends_swiped_in }}<span>Times</span></span>
                 </div>
                 {% endif %}
                 <div class="listitem">
@@ -347,16 +347,33 @@
 
         <section id="personality">
           <img src="{{ url_for('static', filename='styles/imgs/background4.png') }}" class="background">
-          <div class="container reveal">
+          {# static/scripts/personality-wheel.js spins the wheel the first time this screen shows. #}
+          <div class="container wheelscreen" id="wheel" data-owned="{{ w.personalities|map(attribute='name')|list|tojson|forceescape }}">
             <h1>UMass Dining Personalities</h1>
-            <div class="dramaticreveal">
-              <div class="text-container">
-                <h2>{{ w.personality.name }}</h2>
-                <div class="persImgcontainer">
-                <img src="{{ url_for('static', filename='styles/imgs/personalities/' + w.personality.image + '.png') }}" class="persImg">
+            <div class="wheelstage">
+              <div class="ring">
+                {% for p in wheel %}
+                <div class="wheelcard{% if p not in w.personalities %} locked{% endif %}" data-name="{{ p.name }}" data-blurb="{{ p.blurb }}" data-reason="{{ w.reasons.get(p.name, '') }}">
+                  <img src="{{ url_for('static', filename='styles/imgs/personalities/' + p.image + '.png') }}" alt="{{ p.name }}" draggable="false">
+                  <span class="wheelname">{{ p.name }}</span>
+                </div>
+                {% endfor %}
               </div>
-                <p>{{ w.personality.blurb }}</p>
+            </div>
+            <div class="wheelinfo">
+              <p class="wheeltag">Your personality</p>
+              <h2 class="wheeltitle">{{ w.personality.name }}</h2>
+              <p class="wheelblurb">{{ w.personality.blurb }}</p>
+              <p class="wheelreason">{{ w.reasons.get(w.personality.name, '') }}</p>
+              {% if w.personalities|length > 1 %}
+              <button type="button" class="wheelmore">See what other personalities you got &rarr;</button>
+              <div class="wheelnav">
+                <button type="button" class="wheelprev" aria-label="Previous personality">&larr;</button>
+                <span class="wheelcount"></span>
+                <button type="button" class="wheelnext" aria-label="Next personality">&rarr;</button>
               </div>
+              {% endif %}
+              <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
             </div>
           </div>
         </section>
@@ -534,5 +551,6 @@
         </section>
         <script src="{{ url_for('static', filename='scripts/script.js') }}"></script>
         <script src="{{ url_for('static', filename='scripts/explorer.js') }}"></script>
+        <script src="{{ url_for('static', filename='scripts/personality-wheel.js') }}"></script>
 </body>
 </html>

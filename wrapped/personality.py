@@ -1,4 +1,4 @@
-"""Pick a dining personality. The first rule that matches wins."""
+"""Pick dining personalities: everyone gets every one they match, and the first is their main one."""
 from dataclasses import dataclass
 
 
@@ -29,6 +29,12 @@ COFFEE_ADDICT = Personality("Coffee Addict", "coffeeAddict", "You're at the cafe
 WEEKEND_GHOST = Personality("Weekend Ghost", "weekendGhost", "Monday to Friday you're everywhere, then the weekend hits and you vanish. Going home again?")
 LUNCH_LORD = Personality("Lunch Lord", "lunchLord", "Lunch is your meal. Breakfast and dinner are just suggestions.")
 AVERAGE_JOE = Personality("Average Joe", "averageJoe", "You're just an average umass dining enjoyer, nothing to be ashamed of. I didn't make that many personalties and its kinda hard to get some of them so my fault. But maybe you'll get a different personality next semester :p.")
+
+# Every personality but Average Joe, in the order the rules check them: the first one someone
+# matches is their main one.
+PERSONALITIES = [CONNOISSEUR, WORCESTER_WARRIOR, BERK_BEAST, HAMP_HEAD, FRANK_FANATIC, GREEDY, BIG_SPENDER, CALORIE_CONSUMER,
+                 AVATAR, QUICK_EATER, EARLY_BIRD, VAMPIRE, BELLA_HADID, DOUBLE_TROUBLE, PERFECTLY_BALANCED, NIGHT_OWL_SNACKER,
+                 COFFEE_ADDICT, WEEKEND_GHOST, LUNCH_LORD]
 
 
 # At least this share of all their meal swipes at one dining hall gets its personality, once
@@ -108,54 +114,88 @@ WEEKEND_GHOST_SHARE = 0.05
 WEEKEND_GHOST_MIN_VISITS = 30
 
 
-def weekend_ghost(wrapped) -> bool:
+def weekend_visits(wrapped) -> tuple[int, int]:
+    """(visits on Saturday or Sunday, all visits)."""
     clock = wrapped.highlights.clock
     if clock is None:
-        return False
+        return 0, 0
     by_day = {day: sum(hours.values()) for day, hours in clock.grid.items()}
-    visits = sum(by_day.values())
-    return visits >= WEEKEND_GHOST_MIN_VISITS and by_day["Saturday"] + by_day["Sunday"] < WEEKEND_GHOST_SHARE * visits
+    return by_day["Saturday"] + by_day["Sunday"], sum(by_day.values())
+
+
+def weekend_ghost(wrapped) -> bool:
+    weekend, visits = weekend_visits(wrapped)
+    return visits >= WEEKEND_GHOST_MIN_VISITS and weekend < WEEKEND_GHOST_SHARE * visits
 
 
 # At least this share of their meal swipes at lunch makes a Lunch Lord.
 LUNCH_LORD_SHARE = 0.7
 
 
-def pick_personality(wrapped) -> Personality:
+def plural(n, word: str) -> str:
+    return f"{n} {word}" if n == 1 else f"{n} {word}s"
+
+
+def matches(wrapped):
+    """(personality, why they got it) for every personality they match, in PERSONALITIES order."""
     swipes = wrapped.swipes.fillna(0)
     total = swipes.loc["Total"]
 
     if wrapped.places_tried > 15:
-        return CONNOISSEUR
+        yield CONNOISSEUR, f"You ate at {wrapped.places_tried} different food places."
     for hall, personality in HALL_PERSONALITIES.items():
         if wrapped.total_swipes >= HALL_LOYALTY_MIN_SWIPES and total[hall] >= HALL_LOYALTY_SHARE * wrapped.total_swipes:
-            return personality
+            yield personality, f"{total[hall] / wrapped.total_swipes:.0%} of your meal swipes were at {hall}."
     if greedy(wrapped):
-        return GREEDY
+        yield GREEDY, f"You topped up {wrapped.harvest_top_ups} of your {wrapped.harvest_visits} Harvest Market visits."
     if wrapped.total_spent > 250:
-        return BIG_SPENDER
+        yield BIG_SPENDER, f"You spent ${wrapped.total_spent:,.2f} in dining dollars on food."
     if wrapped.total_swipes > 300:
-        return CALORIE_CONSUMER
+        yield CALORIE_CONSUMER, f"You used {wrapped.total_swipes} meal swipes."
     if avatar(total):
-        return AVATAR
-    if swipes.loc["GrabNGo", "Worcester"] + swipes.loc["GrabNGo", "Frank"] > 100:
-        return QUICK_EATER
-    if swipes.loc["Breakfast"].sum() > 100:
-        return EARLY_BIRD
-    if swipes.loc["Late_Night", "Worcester"] + swipes.loc["Late_Night", "Berk"] > 75:
-        return VAMPIRE
+        halls = sum(total[hall] for hall in DINING_HALLS)
+        split = ", ".join(f"{hall} {total[hall] / halls:.0%}" for hall in DINING_HALLS)
+        yield AVATAR, f"Your dining hall swipes were split almost evenly: {split}."
+    grab_n_go = int(swipes.loc["GrabNGo", "Worcester"] + swipes.loc["GrabNGo", "Frank"])
+    if grab_n_go > 100:
+        yield QUICK_EATER, f"You got {grab_n_go} meals from Grab 'n Go."
+    breakfasts = int(swipes.loc["Breakfast"].sum())
+    if breakfasts > 100:
+        yield EARLY_BIRD, f"You swiped in for breakfast {breakfasts} times."
+    late_nights = int(swipes.loc["Late_Night", "Worcester"] + swipes.loc["Late_Night", "Berk"])
+    if late_nights > 75:
+        yield VAMPIRE, f"You swiped in for late night {late_nights} times."
     if bella_hadid(wrapped):
-        return BELLA_HADID
+        yield BELLA_HADID, f"You averaged {wrapped.meals_per_week:.1f} meal swipes a week."
     if double_trouble(wrapped):
-        return DOUBLE_TROUBLE
+        yield DOUBLE_TROUBLE, f"{wrapped.highlights.fun.double_swipes} of your {wrapped.total_swipes} meal swipes were double swipes."
     if perfectly_balanced(wrapped):
-        return PERFECTLY_BALANCED
+        meals = next(plan for plan in wrapped.highlights.plans if plan.is_meals)
+        left = round(meals.left_at_end)
+        yield PERFECTLY_BALANCED, ("At this pace your meal swipes last right up to the end of the semester." if left == 0 else
+                                   f"At this pace you'll end the semester with just {plural(left, 'meal swipe')} left.")
     if (wrapped.late_snacks_per_week or 0) >= NIGHT_OWL_SNACKS_PER_WEEK:
-        return NIGHT_OWL_SNACKER
+        yield NIGHT_OWL_SNACKER, f"You bought food between 9pm and 4am about {wrapped.late_snacks_per_week:.1f} times a week."
     if (wrapped.coffee_per_week or 0) >= COFFEE_TRIPS_PER_WEEK:
-        return COFFEE_ADDICT
+        yield COFFEE_ADDICT, f"You made about {wrapped.coffee_per_week:.1f} coffee runs a week."
     if weekend_ghost(wrapped):
-        return WEEKEND_GHOST
-    if wrapped.total_swipes >= HALL_LOYALTY_MIN_SWIPES and swipes.loc["Lunch"].sum() >= LUNCH_LORD_SHARE * wrapped.total_swipes - 1e-9:
-        return LUNCH_LORD
-    return AVERAGE_JOE
+        weekend, visits = weekend_visits(wrapped)
+        yield WEEKEND_GHOST, (f"None of your {visits} visits were on a weekend." if weekend == 0 else
+                              f"Only {weekend} of your {visits} visits were on a weekend.")
+    lunches = swipes.loc["Lunch"].sum()
+    if wrapped.total_swipes >= HALL_LOYALTY_MIN_SWIPES and lunches >= LUNCH_LORD_SHARE * wrapped.total_swipes - 1e-9:
+        yield LUNCH_LORD, f"{lunches / wrapped.total_swipes:.0%} of your meal swipes were at lunch."
+
+
+def pick_personalities(wrapped) -> tuple[list[Personality], dict[str, str]]:
+    """Every personality they match, main one first, and why they got each one (by name).
+    Average Joe, with no reason, only if there are none."""
+    found = list(matches(wrapped))
+    if not found:
+        return [AVERAGE_JOE], {}
+    return [personality for personality, _ in found], {personality.name: why for personality, why in found}
+
+
+def wheel_cards(personalities) -> list[Personality]:
+    """The cards on the personality wheel: every personality, and Average Joe only for people who got it."""
+    return PERSONALITIES + [AVERAGE_JOE] if AVERAGE_JOE in personalities else PERSONALITIES

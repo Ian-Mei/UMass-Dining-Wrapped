@@ -3,7 +3,7 @@ from urllib.parse import unquote
 
 import pytest
 
-from datetime import date
+from datetime import date, timedelta
 
 from app import app, build_from_pdfs
 
@@ -241,3 +241,37 @@ def test_raw_data_leaves_late_night_blank_where_there_is_none(client):
     tables = page[page.index("All your data"):]
     assert "<td></td>" in tables          # Hamp has no late night
     assert "<td>&ndash;</td>" in tables   # Worcester does, they just didn't go
+
+
+def lunches(n):
+    return [swipe("CPOS Worcester DC" if d % 2 else "CPOS Hampshire DC", f"09/{d + 1:02d}/26 12:00:00 PM", "C Basic Plan")
+            for d in range(n)]
+
+
+def test_personality_wheel_has_every_personality_and_dims_the_ones_they_did_not_get(client):
+    page = upload(client, make_history_pdf(lunches(30))).get_data(as_text=True)  # a Lunch Lord
+    assert page.count('class="wheelcard') == 19
+    assert page.count('class="wheelcard locked"') == 18
+    assert 'data-name="Lunch Lord"' in page and 'data-name="Average Joe"' not in page
+    assert "See what other personalities you got" not in page  # only the one
+
+
+def test_average_joe_is_on_the_wheel_only_for_people_who_got_it(client):
+    page = upload(client, make_history_pdf(lunches(5))).get_data(as_text=True)
+    assert page.count('class="wheelcard') == 20
+    assert page.count('class="wheelcard locked"') == 19
+    assert 'data-name="Average Joe"' in page
+
+
+def test_see_other_personalities_when_there_are_several(client):
+    weekdays = [d for d in range(42) if d % 7 < 5]  # Sep 7 2026 is a Monday
+    rows = [swipe("CPOS Worcester DC" if d % 2 else "CPOS Hampshire DC",
+                  (date(2026, 9, 7) + timedelta(days=d)).strftime("%m/%d/%y 12:00:00 PM"), "C Basic Plan") for d in weekdays]
+    rows += [charge("CPOS Peets Coffee", (date(2026, 9, 7) + timedelta(days=d)).strftime("%m/%d/%y 09:00:00 AM"), 4.50)
+             for d in weekdays if d % 7 < 4]
+    page = upload(client, make_history_pdf(rows)).get_data(as_text=True)
+    assert page.count('class="wheelcard locked"') == 16  # 19 less Coffee Addict, Weekend Ghost and Lunch Lord
+    assert "See what other personalities you got" in page
+    assert '["Coffee Addict", "Weekend Ghost", "Lunch Lord"]' in page.replace("&#34;", '"')
+    assert 'data-reason="100% of your meal swipes were at lunch."' in page
+    assert '<p class="wheelreason">You made about' in page  # the main one's, before the wheel lands

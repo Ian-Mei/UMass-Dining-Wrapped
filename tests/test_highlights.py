@@ -161,6 +161,21 @@ def test_fun_facts():
     assert fun.busiest_day_places == ["Worcester", "Worcester Grab 'n Go"]
 
 
+def test_grab_n_go_doubles_are_not_swiping_a_friend_in():
+    # At Grab 'n Go a second meal is usually for later, not for a friend, but it's still a double
+    # swipe for Double Trouble.
+    rows = [
+        meal("CPOS Worcester GG", "10/05/26 12:00:00 PM"),
+        meal("CPOS Worcester GG", "10/05/26 12:00:30 PM"),
+        ["M Unlimited DC", "10/06/26 12:00:00 PM", "CPOS Franklin GG", "-2", "500"],
+        meal("CPOS Hampshire DC", "10/07/26 06:00:00 PM"),
+        meal("CPOS Hampshire DC", "10/07/26 06:00:30 PM"),  # this one counts
+    ]
+    fun = highlights(rows).fun
+    assert fun.friends_swiped_in == 1
+    assert fun.double_swipes == 3
+
+
 def test_plans_without_spending_do_not_crash():
     # Charges that parse to $0 but a balance that still went down.
     rows = [["UMass Dining Dollars", f"09/0{d}/26 12:00:00 PM", "CPOS Wasabi", "-$0.00", f"${100 - d}.00"] for d in range(1, 7)]

@@ -14,3 +14,6 @@ debug_uploads/
 
 # Brainstorming mockups
 .superpowers/
+
+# Browser test screenshots (show real data)
+.playwright-mcp/

@@ -23,7 +23,7 @@ def main(paths):
     print(wrapped.vendors, "\n")
     print(f"Meal swipes: {wrapped.total_swipes}   Dining dollars: ${wrapped.total_spent:.2f}")
     print(f"Laundry: {wrapped.laundry}")
-    print(f"Personality: {wrapped.personality.name}")
+    print(f"Personalities: {', '.join(p.name for p in wrapped.personalities)}")
 
 
 if __name__ == "__main__":
