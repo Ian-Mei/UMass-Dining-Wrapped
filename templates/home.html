@@ -93,15 +93,20 @@
                       Dining Wrapped
                     </a>
                   </li>
-                  <li>Log into <a href="https://get.cbord.com/umass/full/funds_home.php" target="_blank" rel="noopener">GET</a> like you normally do.</li>
+                  <li>Open <a href="https://get.cbord.com/umass/full/funds_home.php" target="_blank" rel="noopener">GET</a> and log in like you normally do.</li>
                   <li>Click the <b>Dining Wrapped</b> bookmark while you're on GET.</li>
                 </ol>
               </div>
               <form class="home-howto" method="post" action="{{ url_for('wrapped') }}" enctype="multipart/form-data" id="upload-form">
-                <h2 class="heading2">Option 2: upload your PDF</h2>
+                <h2 class="heading2">Option 2: upload your PDFs</h2>
                 <p>
                   In <a href="https://get.cbord.com/umass/full/history.php" target="_blank" rel="noopener">GET's transaction history</a>,
                   click <b>Export PDF</b>, then upload it here.
+                </p>
+                <p>
+                  Heads up: GET only puts your newest transactions in each PDF (as few as 14), so one PDF of a
+                  whole semester will be missing stuff. For a whole semester use Option 1. Otherwise export a few
+                  days at a time and upload all the PDFs together.
                 </p>
                 <div class="home-btn-group">
                   <input type="file" name="pdfs" accept=".pdf,application/pdf" multiple required>
@@ -146,8 +151,9 @@
                   </span>
                   <span class="question-text1">
                     <span>
-                      You'll get your dining hall stats, along with dining dollar stats. You can see how
-                      much money you've spent at each vendor, and get a dining hall personality.
+                      Your swipes at each dining hall and meal, where your dining dollars went, your streaks and usual
+                      times, and your dining personalities. Depending on your plan and where you went, you might also see
+                      whether your plan makes it to finals, Blue Wall, laundry, and every visit day by day.
                     </span>
                   </span>
                 </div>
@@ -168,7 +174,8 @@
                   </span>
                   <span class="question-text1">
                     <span>
-                      Yea but it wont look good, and bookmarks are a pain on phones. Use your laptop, or upload the PDF.
+                      Yea, your Wrapped fits on a phone screen. Bookmarks are a pain on phones though, so do the GET
+                      part on your laptop, or upload the PDFs.
                     </span>
                   </span>
                 </div>
@@ -182,7 +189,20 @@
                     <span>
                       You log into GET yourself, so I never see your NetID or password. The bookmark runs in your GET tab,
                       downloads your transaction history PDFs, and sends them to this site. The PDFs are read in memory to
-                      make your Wrapped and never saved anywhere.
+                      make your Wrapped and never saved anywhere. The site counts visits with
+                      <a href="https://www.goatcounter.com/help/privacy" target="_blank" rel="noopener">GoatCounter</a>
+                      (no cookies; it sees your browser, screen size and rough location like any site does), but nothing
+                      about your transactions.
+                    </span>
+                  </span>
+                </div>
+                <div class="question-container">
+                  <span class="question-text heading4">
+                    <span>Something looks wrong, or have an idea?</span>
+                  </span>
+                  <span class="question-text1">
+                    <span>
+                      Let me know in this <a href="{{ feedback_url }}" target="_blank" rel="noopener">feedback form</a>.
                     </span>
                   </span>
                 </div>

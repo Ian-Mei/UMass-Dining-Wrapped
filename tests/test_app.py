@@ -1,5 +1,6 @@
 import io
 import re
+from pathlib import Path
 from urllib.parse import unquote
 
 import pytest
@@ -330,6 +331,19 @@ def test_goatcounter_counts_home_wrapped_and_failed_uploads(client, counting):
 def test_goatcounter_is_off_unless_configured(client):
     # Only the deploy sets WRAPPED_GOATCOUNTER_URL, so local runs and forks never count.
     assert counted_path(client.get("/").get_data(as_text=True)) is None
+
+
+def test_home_page_has_no_fixed_widths_wider_than_a_phone():
+    # The hero had `width: 900px` and was cut off at 360px. Use max-width for big boxes instead.
+    css = (Path(app.root_path) / "static" / "styles" / "home.css").read_text(encoding="utf-8")
+    assert [w for w in re.findall(r"(?<![-\w])width:\s*(\d+)px", css) if int(w) > 360] == []
+
+
+def test_feedback_form_is_linked_from_home_and_the_end_screen(client):
+    form = f'href="{app_module.FEEDBACK_URL}"'
+    assert form in client.get("/").get_data(as_text=True)
+    page = upload(client, make_history_pdf([swipe("CPOS Worcester DC", "09/02/26 12:00:00 PM")])).get_data(as_text=True)
+    assert form in page[page.index('<section id="end">'):]
 
 
 def test_end_screen_has_no_facebook_link(client):

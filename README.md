@@ -18,6 +18,8 @@ Nobody types their NetID or password into this site. There are two ways in:
    Sources: [`static/scripts/bookmarklet.js`](static/scripts/bookmarklet.js) (the fetcher) and
    [`static/scripts/history_windows.js`](static/scripts/history_windows.js) (which windows).
 2. **Upload.** GET → View All Transaction History → **Export PDF**, then upload it on the home page.
+   The same row limit applies to each exported PDF, so for a whole semester export a few days at a
+   time and upload all the PDFs together (or use the bookmarklet).
 
 PDFs are parsed in memory and never written to disk.
 
