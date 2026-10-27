@@ -22,6 +22,9 @@ BOOKMARKLET_SOURCE = Path(__file__).parent / "static" / "scripts" / "bookmarklet
 SAVE_UPLOADS_DIR = os.environ.get("WRAPPED_SAVE_UPLOADS")
 # In debug mode (flask --app app run --debug) uploads are saved here unless the above is set.
 DEBUG_UPLOADS_DIR = "debug_uploads"
+# Visit counts (templates/_goatcounter.html). Only the deploy sets it (render.yaml), so local runs
+# and forks don't count.
+GOATCOUNTER_URL = os.environ.get("WRAPPED_GOATCOUNTER_URL")
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
@@ -29,6 +32,11 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 # matches the page it opens. Not X-Forwarded-Host: anyone can send it, and it would decide where
 # the bookmarklet sends people's PDFs. Render keeps the real Host; elsewhere set WRAPPED_PUBLIC_URL.
 SERVE_OPTIONS = {"host": "0.0.0.0", "trusted_proxy": "*", "trusted_proxy_headers": {"x-forwarded-proto"}}
+
+
+@app.context_processor
+def analytics():
+    return {"goatcounter": GOATCOUNTER_URL}
 
 
 @app.template_filter()
@@ -69,8 +77,9 @@ def bookmarklet_href():
     return "javascript:" + quote(code.replace("__APP_ORIGIN__", public_origin()), safe="")
 
 
-def render_home(error=None, status=200):
-    return render_template("home.html", bookmarklet=bookmarklet_href(), error=error), status
+def render_home(error=None, status=200, count_path="/"):
+    page = render_template("home.html", bookmarklet=bookmarklet_href(), error=error, count_path=count_path)
+    return page, status
 
 
 @app.get("/")
@@ -121,7 +130,7 @@ def wrapped():
     except ParseError as e:
         if saved_to:
             (saved_to / "error.txt").write_text(f"ParseError: {e}\n", encoding="utf-8")
-        return render_home(str(e), 400)
+        return render_home(str(e), 400, count_path="/error")
     except Exception:
         if saved_to:
             (saved_to / "error.txt").write_text(traceback.format_exc(), encoding="utf-8")
@@ -146,7 +155,9 @@ def build_from_pdfs(pdfs):
 
 
 def render_wrapped(result, maybe_cut_off=False):
-    return render_template("wrapped.html", w=result, maybe_cut_off=maybe_cut_off, wheel=wheel_cards(result.personalities))
+    return render_template(
+        "wrapped.html", w=result, maybe_cut_off=maybe_cut_off, wheel=wheel_cards(result.personalities), count_path="/wrapped",
+    )
 
 
 # Dev only (flask --app app run --debug): re-render saved uploads without going through GET.
@@ -180,7 +191,7 @@ def dev_run(run):
 
 @app.errorhandler(413)
 def too_large(_):
-    return render_home(f"That upload is over {MAX_UPLOAD_MB} MB. A semester of history should be much smaller.", 413)
+    return render_home(f"That upload is over {MAX_UPLOAD_MB} MB. A semester of history should be much smaller.", 413, "/error")
 
 
 if __name__ == "__main__":

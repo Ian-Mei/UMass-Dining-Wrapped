@@ -1,4 +1,5 @@
 import io
+import re
 from urllib.parse import unquote
 
 import pytest
@@ -8,6 +9,7 @@ from datetime import date, timedelta
 from waitress.proxy_headers import proxy_headers_middleware
 from werkzeug.test import Client
 
+import app as app_module
 from app import SERVE_OPTIONS, app, build_from_pdfs
 
 from .conftest import charge, make_history_pdf, swipe
@@ -293,3 +295,38 @@ def test_see_other_personalities_when_there_are_several(client):
     assert '["Coffee Addict", "Weekend Ghost", "Lunch Lord"]' in page.replace("&#34;", '"')
     assert 'data-reason="100% of your meal swipes were at lunch."' in page
     assert '<p class="wheelreason">You made about' in page  # the main one's, before the wheel lands
+
+
+COUNT_URL = "https://example.goatcounter.com/count"
+
+
+@pytest.fixture
+def counting(monkeypatch):
+    monkeypatch.setattr(app_module, "GOATCOUNTER_URL", COUNT_URL)
+
+
+def counted_path(page):
+    """The path GoatCounter is told to count for this page, or None if it isn't counted."""
+    match = re.search(r"window\.goatcounter = \{path: \"([^\"]*)\"\}", page)
+    if match:
+        assert f'data-goatcounter="{COUNT_URL}"' in page
+        # The results page holds the person's purchases; only run the exact count.js we checked.
+        assert 'src="https://gc.zgo.at/count.v4.js"' in page
+        assert 'integrity="sha384-' in page and 'crossorigin="anonymous"' in page
+    return match and match[1]
+
+
+def test_goatcounter_counts_home_wrapped_and_failed_uploads(client, counting):
+    assert counted_path(client.get("/").get_data(as_text=True)) == "/"
+    rows = [swipe("CPOS Worcester DC", "09/02/26 12:00:00 PM")]
+    assert counted_path(upload(client, make_history_pdf(rows)).get_data(as_text=True)) == "/wrapped"
+    # A failed upload renders the home page at /wrapped; it mustn't count as a Wrapped.
+    assert counted_path(upload(client, b"not a pdf").get_data(as_text=True)) == "/error"
+    # Pressing the button with no file chosen isn't a failed upload.
+    page = client.post("/wrapped", data={}, content_type="multipart/form-data").get_data(as_text=True)
+    assert counted_path(page) == "/"
+
+
+def test_goatcounter_is_off_unless_configured(client):
+    # Only the deploy sets WRAPPED_GOATCOUNTER_URL, so local runs and forks never count.
+    assert counted_path(client.get("/").get_data(as_text=True)) is None

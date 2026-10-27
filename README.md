@@ -69,6 +69,13 @@ on Render's `PORT`). Every push to `main` redeploys. The free plan sleeps after 
 visits, so the first visit after that takes a little while to load. Don't set `WRAPPED_SAVE_UPLOADS`
 there: uploads should stay in memory.
 
+Visits are counted with [GoatCounter](https://www.goatcounter.com) (no cookies) when
+`WRAPPED_GOATCOUNTER_URL` is set, which only `render.yaml` does. Pages count as `/` (home),
+`/wrapped` (a Wrapped made; refreshing the results counts again) and `/error` (a failed upload).
+count.js sends that path, the page title ("UMass Dining Wrapped"), the referrer and screen size,
+nothing from the page's content. It's pinned to a version with an integrity hash; to upgrade, take
+the new hash from [GoatCounter's list](https://www.goatcounter.com/help/countjs-versions).
+
 ## Notes
 
 - Only charges count. Deposits, transfers and refunds are dropped.
