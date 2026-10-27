@@ -365,3 +365,11 @@ def test_stats_card_shows_their_first_name(client):
 
 def test_an_unreadable_name_is_left_off_instead_of_failing():
     assert name_on([b"not a pdf", make_history_pdf([], name="JORDAN  SMITH")]) is None
+
+
+def test_every_page_gets_the_logo_as_its_icon(client):
+    icon = "styles/imgs/UMassDiningWrapped.jpg"
+    assert f'rel="icon" href="/static/{icon}"' in client.get("/").get_data(as_text=True)
+    # Browsers ask for /favicon.ico on pages without the link (like /dev).
+    response = client.get("/favicon.ico")
+    assert response.status_code == 200 and response.mimetype == "image/jpeg"

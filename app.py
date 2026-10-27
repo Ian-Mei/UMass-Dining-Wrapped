@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
 
-from flask import Flask, abort, jsonify, render_template, render_template_string, request
+from flask import Flask, abort, jsonify, render_template, render_template_string, request, send_from_directory
 from waitress import serve
 
 from wrapped import ParseError, build_wrapped
@@ -92,6 +92,12 @@ def render_home(error=None, status=200, count_path="/"):
 @app.get("/")
 def home():
     return render_home()
+
+
+@app.get("/favicon.ico")
+def favicon():
+    """Browsers ask for this on pages without a <link rel="icon"> (like /dev)."""
+    return send_from_directory(Path(app.static_folder) / "styles" / "imgs", "UMassDiningWrapped.jpg")
 
 
 @app.get("/import")
