@@ -2,7 +2,8 @@
 
 Spotify-Wrapped-style recap of a semester of UMass dining, built from GET (get.cbord.com)
 transaction-history PDFs. Flask app; the results page is a stack of full-screen "screens".
-README.md covers setup, layout and the two ways data gets in (bookmarklet and manual upload).
+README.md covers setup, layout and how data gets in (the bookmarklet; the home page has no upload
+button, but `/wrapped` still takes PDFs).
 
 ## Commands
 

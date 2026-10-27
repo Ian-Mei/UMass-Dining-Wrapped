@@ -58,7 +58,8 @@ def test_rows_rejects_garbage(client):
 def test_wrapped_requires_a_file(client):
     response = client.post("/wrapped", data={}, content_type="multipart/form-data")
     assert response.status_code == 400
-    assert "Choose your transaction history PDF" in response.get_data(as_text=True)
+    # The home page has no file picker, so point back to the bookmark.
+    assert "Dining Wrapped bookmark" in response.get_data(as_text=True)
 
 
 def test_wrapped_rejects_garbage(client):
@@ -176,6 +177,8 @@ def test_warns_when_a_pdf_may_be_cut_off(client):
     full = [swipe("CPOS Worcester DC", f"09/{d:02d}/26 12:00:00 PM") for d in range(1, 18)]
     page = upload(client, make_history_pdf(full)).get_data(as_text=True)
     assert "may be missing" in page
+    # They got here with the bookmark, so don't send them back to it.
+    assert "bookmark" not in page[page.index('class="notice"'):page.index("</p>", page.index('class="notice"'))]
 
     page = upload(client, make_history_pdf(full[:5])).get_data(as_text=True)
     assert "may be missing" not in page
@@ -323,7 +326,7 @@ def test_goatcounter_counts_home_wrapped_and_failed_uploads(client, counting):
     assert counted_path(upload(client, make_history_pdf(rows)).get_data(as_text=True)) == "/wrapped"
     # A failed upload renders the home page at /wrapped; it mustn't count as a Wrapped.
     assert counted_path(upload(client, b"not a pdf").get_data(as_text=True)) == "/error"
-    # Pressing the button with no file chosen isn't a failed upload.
+    # A POST with no PDFs (only by hand now; the home page has no upload) isn't a failed upload.
     page = client.post("/wrapped", data={}, content_type="multipart/form-data").get_data(as_text=True)
     assert counted_path(page) == "/"
 
@@ -373,3 +376,11 @@ def test_every_page_gets_the_logo_as_its_icon(client):
     # Browsers ask for /favicon.ico on pages without the link (like /dev).
     response = client.get("/favicon.ico")
     assert response.status_code == 200 and response.mimetype == "image/jpeg"
+
+
+def test_home_page_only_offers_the_bookmarklet(client):
+    # One exported PDF gets cut to GET's row limit, so there's no upload button. /import still
+    # posts the bookmarklet's PDFs to /wrapped.
+    page = client.get("/").get_data(as_text=True)
+    assert 'href="javascript:' in page
+    assert 'type="file"' not in page and "Option 2" not in page
