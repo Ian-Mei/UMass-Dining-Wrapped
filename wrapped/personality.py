@@ -1,6 +1,8 @@
 """Pick dining personalities: everyone gets every one they match, and the first is their main one."""
 from dataclasses import dataclass
 
+from .highlights import DINING_DOLLARS
+
 
 @dataclass
 class Personality:
@@ -23,7 +25,7 @@ VAMPIRE = Personality("Vampire", "vampire", "Now you love the late night and wai
 BELLA_HADID = Personality("Bella Hadid", "bellaHadid", "You barely touched your meal plan this semester. Either you're living that model life or you've been surviving on iced coffee and vibes. Eat something bestie.")
 GREEDY = Personality("Greedy", "greedy", "When one swipe isnt enough. Do you even measure your food on the scale?")
 DOUBLE_TROUBLE = Personality("Double Trouble", "doubleTrouble", "Two swipes, one trip. Either you're feeding a friend or you're just that hungry.")
-PERFECTLY_BALANCED = Personality("Perfectly Balanced", "perfectlyBalanced", "Perfectly balanced, as all things should be. You're on track to use basically every swipe on your plan.")
+PERFECTLY_BALANCED = Personality("Perfectly Balanced", "perfectlyBalanced", "Perfectly balanced, as all things should be. You're on track to use basically every swipe/dining dollar on your plan.")
 NIGHT_OWL_SNACKER = Personality("Night Owl Snacker", "nightOwlSnacker", "When the sun goes down the snacking begins. Those late night dining dollars add up.")
 COFFEE_ADDICT = Personality("Coffee Addict", "coffeeAddict", "You're at the cafes more than some of the baristas. Maybe try water once.")
 WEEKEND_GHOST = Personality("Weekend Ghost", "weekendGhost", "Monday to Friday you're everywhere, then the weekend hits and you vanish. Going home again?")
@@ -93,16 +95,24 @@ def double_trouble(wrapped) -> bool:
     return fun.double_swipes >= DOUBLE_TROUBLE_SHARE * wrapped.total_swipes - 1e-9
 
 
-# A meal plan on pace to end the semester with no more than this share of it left, without
-# running out first, makes a Perfectly Balanced.
+# A plan on pace to end the semester with no more than this share of it left, without running
+# out first, makes a Perfectly Balanced.
 PERFECTLY_BALANCED_LEFT = 0.05
 
 
+def balanced_plan(wrapped):
+    """The PlanPace Perfectly Balanced looks at: dining dollars on an unlimited plan (the swipes
+    never run out), otherwise their meal swipes."""
+    if wrapped.meal_plan == "Unlimited":
+        return next((plan for plan in wrapped.highlights.plans if plan.label == DINING_DOLLARS), None)
+    return next((plan for plan in wrapped.highlights.plans if plan.is_meals), None)
+
+
 def perfectly_balanced(wrapped) -> bool:
-    meals = next((plan for plan in wrapped.highlights.plans if plan.is_meals), None)
-    if meals is None or meals.runs_out is not None:
+    plan = balanced_plan(wrapped)
+    if plan is None or plan.runs_out is not None:
         return False
-    return meals.left_at_end <= PERFECTLY_BALANCED_LEFT * (meals.used + meals.left)
+    return plan.left_at_end <= PERFECTLY_BALANCED_LEFT * (plan.used + plan.left)
 
 
 # A week, on average.
@@ -170,10 +180,12 @@ def matches(wrapped):
     if double_trouble(wrapped):
         yield DOUBLE_TROUBLE, f"{wrapped.highlights.fun.double_swipes} of your {wrapped.total_swipes} meal swipes were double swipes."
     if perfectly_balanced(wrapped):
-        meals = next(plan for plan in wrapped.highlights.plans if plan.is_meals)
-        left = round(meals.left_at_end)
-        yield PERFECTLY_BALANCED, ("At this pace your meal swipes last right up to the end of the semester." if left == 0 else
-                                   f"At this pace you'll end the semester with just {plural(left, 'meal swipe')} left.")
+        plan = balanced_plan(wrapped)
+        what = "meal swipes" if plan.is_meals else "dining dollars"
+        left = (plural(round(plan.left_at_end), "meal swipe") if plan.is_meals
+                else f"${plan.left_at_end:.2f} in dining dollars")
+        yield PERFECTLY_BALANCED, (f"At this pace your {what} last right up to the end of the semester." if plan.left_at_end <= 0
+                                   else f"At this pace you'll end the semester with just {left} left.")
     if (wrapped.late_snacks_per_week or 0) >= NIGHT_OWL_SNACKS_PER_WEEK:
         yield NIGHT_OWL_SNACKER, f"You bought food between 9pm and 4am about {wrapped.late_snacks_per_week:.1f} times a week."
     if (wrapped.coffee_per_week or 0) >= COFFEE_TRIPS_PER_WEEK:

@@ -230,6 +230,19 @@ def test_perfectly_balanced_ends_the_semester_with_almost_no_swipes_left(left, e
     assert w.personality == expected
 
 
+@pytest.mark.parametrize("left, balanced", [(82, True), (100, False), (70, False)])
+def test_perfectly_balanced_on_an_unlimited_plan_is_about_dining_dollars(left, balanced):
+    # Unlimited swipes don't run out, so it's their dining dollars: $100 in 60 days, so $80 more
+    # by Dec 18. $82 left ends with $2 (under 5% of $182), $100 with $20, and $70 runs out.
+    rows = [["UMass Dining Dollars", stamp(FIRST_MONDAY + timedelta(days=3 * n - 6, hours=13)), "CPOS Tamales",
+             "-$5.00", f"${left + 100 - 5 * (n + 1):.2f}"] for n in range(20)]
+    rows += [swipe("CPOS Hampshire DC", stamp(FIRST_MONDAY + timedelta(days=d, hours=18)), "E Unlimited 250") for d in range(0, 54, 2)]
+    w = build_wrapped(clean(rows), today=date(2026, 10, 31), history=account_history(rows))
+    assert (PERFECTLY_BALANCED in w.personalities) == balanced
+    if balanced:
+        assert w.reasons["Perfectly Balanced"] == "At this pace you'll end the semester with just $2.00 in dining dollars left."
+
+
 def test_weekend_ghost_barely_eats_on_campus_on_weekends():
     weekdays = [d for d in range(42) if d % 7 < 5]  # Sep 7 is a Monday
     assert wrapped_from(meals(weekdays, hour=18)).personality == WEEKEND_GHOST
