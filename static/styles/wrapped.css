@@ -72,6 +72,14 @@ section#end {
   color: #e0ffff;
   text-align: center;
 }
+section#end .feedback {
+  margin: 0.5em 0;
+  font-size: 1.25rem;
+}
+section#end .feedback a {
+  color: inherit;
+  text-decoration: underline;
+}
 section .container {
   margin: 0px;
   display: flex;
