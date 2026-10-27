@@ -72,6 +72,20 @@ section#end {
   color: #e0ffff;
   text-align: center;
 }
+section#end .feedback {
+  margin: 0.5em 0;
+  font-size: 1.25rem;
+}
+section#end .feedback a {
+  color: inherit;
+  text-decoration: underline;
+}
+section#end .arrow {
+  font-size: 3rem;
+  font-weight: bold;
+  line-height: 1;
+  margin-bottom: 10px;
+}
 section .container {
   margin: 0px;
   display: flex;

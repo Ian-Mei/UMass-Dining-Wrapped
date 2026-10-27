@@ -25,6 +25,8 @@ DEBUG_UPLOADS_DIR = "debug_uploads"
 # Visit counts (templates/_goatcounter.html). Only the deploy sets it (render.yaml), so local runs
 # and forks don't count.
 GOATCOUNTER_URL = os.environ.get("WRAPPED_GOATCOUNTER_URL")
+# Linked from the home page FAQ and the last results screen.
+FEEDBACK_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdJ23vnh_7Q0eL2NI6415G-4VDRiZK-JZpBnH_FGAPRVQapxg/viewform"
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
@@ -37,6 +39,11 @@ SERVE_OPTIONS = {"host": "0.0.0.0", "trusted_proxy": "*", "trusted_proxy_headers
 @app.context_processor
 def analytics():
     return {"goatcounter": GOATCOUNTER_URL}
+
+
+@app.context_processor
+def feedback():
+    return {"feedback_url": FEEDBACK_URL}
 
 
 @app.template_filter()
