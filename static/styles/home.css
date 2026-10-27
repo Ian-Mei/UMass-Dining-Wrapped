@@ -144,7 +144,8 @@
 }
 .home-container01 {
   gap: var(--dl-space-space-twounits);
-  width: 902px;
+  width: 100%;
+  max-width: 902px;
   display: flex;
   align-items: center;
   flex-direction: column;
@@ -152,7 +153,7 @@
 }
 .home-hero-heading {
   color: var(--dl-color-gray-white);
-  width: 900px;
+  width: 100%;
   max-width: 800px;
   font-style: normal;
   text-align: center;
@@ -590,6 +591,9 @@
 }
 .home-howto .home-btn-group {
   flex-wrap: wrap;
+}
+.home-howto input[type="file"] {
+  max-width: 100%;
 }
 .home-bookmarklet {
   display: inline-block;
