@@ -1,0 +1,16 @@
+# Render Blueprint: New > Blueprint in the Render dashboard, pick this repo.
+# Uploads are parsed in memory; don't set WRAPPED_SAVE_UPLOADS here.
+services:
+  - type: web
+    name: umass-dining-wrapped
+    runtime: python
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt -c constraints.txt
+    startCommand: python app.py
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.5
+      - key: PYTHONUNBUFFERED
+        value: "1"

@@ -5,7 +5,10 @@ import pytest
 
 from datetime import date, timedelta
 
-from app import app, build_from_pdfs
+from waitress.proxy_headers import proxy_headers_middleware
+from werkzeug.test import Client
+
+from app import SERVE_OPTIONS, app, build_from_pdfs
 
 from .conftest import charge, make_history_pdf, swipe
 
@@ -175,9 +178,24 @@ def test_warns_when_a_pdf_may_be_cut_off(client):
     assert "may be missing" not in page
 
 
-def test_bookmarklet_uses_the_public_address_behind_a_proxy(client):
-    page = client.get("/", headers={"X-Forwarded-Proto": "https", "X-Forwarded-Host": "wrapped.example.com"})
-    assert "https://wrapped.example.com" in unquote(page.get_data(as_text=True))
+def home_behind_proxy(headers):
+    """The home page as `python app.py` serves it: through waitress's proxy-header handling."""
+    options = {k: v for k, v in SERVE_OPTIONS.items() if k in ("trusted_proxy", "trusted_proxy_headers")}
+    client = Client(proxy_headers_middleware(app, **options))
+    return unquote(client.get("/", headers=headers, environ_base={"REMOTE_ADDR": "10.0.0.1"}).get_data(as_text=True))
+
+
+def test_bookmarklet_uses_https_behind_a_proxy():
+    page = home_behind_proxy({"Host": "wrapped.example.com", "X-Forwarded-Proto": "https"})
+    assert "https://wrapped.example.com" in page
+
+
+def test_bookmarklet_ignores_a_forged_forwarded_host():
+    # Anyone can send X-Forwarded-Host; trusting it would let a page point the bookmarklet (and
+    # someone's PDFs) at another site. Render passes the real Host through.
+    page = home_behind_proxy({"Host": "wrapped.example.com", "X-Forwarded-Host": "evil.example"})
+    assert "evil.example" not in page
+    assert "wrapped.example.com" in page
 
 
 def test_warns_when_a_balance_drops_more_than_the_purchases_explain(client):
