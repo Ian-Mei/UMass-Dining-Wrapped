@@ -343,10 +343,10 @@ def test_explorer_lists_every_food_purchase():
 
 
 def test_explorer_places_most_visited_first_with_a_pattern_note():
-    # Like Datya's Tamales: Mondays and Tuesdays at dinner, plus a Wednesday and a Friday lunch.
-    days = [("09/14", "06:44"), ("09/15", "05:35"), ("09/21", "06:33"), ("09/22", "06:05"),
-            ("09/28", "06:20"), ("09/29", "05:39"), ("09/09", "05:42"), ("10/16", "11:36")]
-    rows = [ycmp("CPOS Tamales", f"{d}/26 {t}:00 PM" if t != "11:36" else f"{d}/26 {t}:00 AM") for d, t in days]
+    # Mondays and Tuesdays at dinner, plus a Wednesday dinner and a Friday lunch.
+    days = [("09/14", "06:00 PM"), ("09/15", "06:00 PM"), ("09/21", "06:00 PM"), ("09/22", "06:00 PM"),
+            ("09/28", "06:00 PM"), ("09/29", "06:00 PM"), ("09/09", "06:00 PM"), ("10/16", "12:00 PM")]
+    rows = [ycmp("CPOS Tamales", f"{d}/26 {t[:5]}:00 {t[6:]}") for d, t in days]
     rows += [ycmp("CPOS Wasabi", f"10/0{d}/26 12:00:00 PM") for d in (1, 2)]
     places = highlights(rows).explorer.places
     assert [(p["name"], p["visits"]) for p in places] == [("Tamales", 8), ("Wasabi", 2)]
@@ -425,8 +425,8 @@ def test_explorer_places_are_only_dining_dollars_without_a_ycmp_plan():
 
 def test_a_zero_meal_swipe_is_a_free_visit():
     # GET's "-0" rows: an unlimited plan's dinner that didn't take a swipe.
-    rows = [meal("CPOS Worcester DC", "09/06/26 10:57:10 AM"),
-            ["E Unlimited 250", "09/06/26 07:42:10 PM", "CPOS Worcester DC", "-0", "593"]]
+    rows = [meal("CPOS Worcester DC", "09/07/26 12:00:00 PM"),
+            ["M Unlimited DC", "09/07/26 06:00:00 PM", "CPOS Worcester DC", "-0", "500"]]
     [_, free] = highlights(rows).explorer.purchases
     assert (free["swipes"], free["dollars"]) == (0, 0)
 
