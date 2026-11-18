@@ -360,6 +360,7 @@ BLUE_WALL = {
     "Yum! Bakery": r"\byum\b",
     "People's Organic Coffee": r"\bpeople'?s organic\b",
     "Paciugo": r"\bpaciugo\b",
+    "The Grill": r"\bthe grill\b",
 }
 HARVEST_MARKET = r"\bharvest market\b"
 
@@ -375,6 +376,8 @@ REMARKS = {
     "Yum! Bakery": "{n} swipe{s} on cookies, cakes and macarons. Dessert counts as a meal if you swipe for it.",
     "People's Organic Coffee": "{t} coffee run{ts}. People's Organic is basically fueling your GPA.",
     "Paciugo": "{t} trip{ts} for gelato. It's always gelato weather if you believe hard enough.",
+    # Placeholder until the user writes this one.
+    "The Grill": "{n} swipe{s} at The Grill.",
 }
 HARVEST_REMARK = "{t} trip{ts} to the hot bar. The Harvest Market staff probably know your order before you do."
 
