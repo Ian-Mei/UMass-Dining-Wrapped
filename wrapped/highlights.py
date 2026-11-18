@@ -360,7 +360,7 @@ BLUE_WALL = {
     "Yum! Bakery": r"\byum\b",
     "People's Organic Coffee": r"\bpeople'?s organic\b",
     "Paciugo": r"\bpaciugo\b",
-    "The Grill": r"\bthe grill\b",
+    "The Grill": r"^(cpos )?the grill\b",  # anchored: "grill" is generic, unlike the others
 }
 HARVEST_MARKET = r"\bharvest market\b"
 

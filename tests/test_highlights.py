@@ -3,7 +3,7 @@ from datetime import date, time
 import pytest
 
 from wrapped import build_wrapped
-from wrapped.highlights import blue_wall_name, display_name
+from wrapped.highlights import REMARKS, blue_wall_name, display_name
 from wrapped.transactions import account_history, clean
 
 
@@ -197,6 +197,7 @@ def test_plan_that_would_last_for_centuries():
     ("Paciugo Gelato", "Paciugo"),
     ("CPOS The Grill", "The Grill"),
     ("The Grill 2", "The Grill"),
+    ("CPOS Franklin The Grill", None),  # a grill somewhere else isn't Blue Wall
     ("Harvest Market", None),
     ("Peet's Coffee & Tea", None),
     ("Worcester", None),
@@ -228,7 +229,16 @@ def test_the_grill_is_blue_wall():
     rows = [ycmp("CPOS The Grill", f"10/0{d}/26 12:00:00 PM") for d in (1, 2, 3)]
     bw = highlights(rows).blue_wall
     assert [(s.name, s.swipes) for s in bw.spots] == [("The Grill", 3)]
-    assert "3" in bw.remark
+    assert (bw.top.place, bw.of) == ("The Grill", 10)
+    assert bw.remark == REMARKS["The Grill"].format(n=3, s="s", t=3, ts="s")
+
+
+def test_the_grill_is_under_blue_wall_in_raw_data():
+    rows = [ycmp("CPOS The Grill", "10/01/26 12:00:00 PM")]
+    w = build_wrapped(clean(rows), today=date(2026, 10, 7), history=account_history(rows))
+    sections = {s["title"]: s for s in w.highlights.raw_sections}
+    assert [r["place"] for r in sections["Blue Wall"]["rows"]] == ["The Grill"]
+    assert "Everywhere else" not in sections
 
 
 def test_no_blue_wall_recap_under_three_swipes():
