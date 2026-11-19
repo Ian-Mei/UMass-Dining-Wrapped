@@ -1,10 +1,11 @@
 from datetime import datetime
 
+import fitz
 import pytest
 
 from wrapped.transactions import ParseError, account_history, balance_gaps, clean, count_rows, first_name, printed_date, parse_pdfs, parse_timestamp, rows_from_pdf
 
-from .conftest import charge, make_history_pdf, swipe
+from .conftest import COLUMN_WIDTHS, charge, make_history_pdf, swipe
 
 
 def test_reads_rows_from_pdf_and_skips_headers():
@@ -19,6 +20,19 @@ def test_keeps_spaces_when_words_are_drawn_separately():
         charge("Blue Wall 1", "09/02/26 01:15:00 PM", 9.5),
     ]
     assert rows_from_pdf(make_history_pdf(rows, word_by_word=True)) == rows
+
+
+def test_long_location_spilling_over_the_time():
+    # GET centers a location too long for its column, so it spills left and its first letter
+    # overlaps the time's "PM" with no space between them. The two must not become one word.
+    when, place = "09/23/26 07:01:28 PM", "PAPERCUT DESIGN BLDG 260A"
+    doc = fitz.open("pdf", make_history_pdf([["Student Debit Plan", "", "", "-$4.87", "$2.03"]]))
+    page = doc[0]
+    edge = 30 + COLUMN_WIDTHS[0] + COLUMN_WIDTHS[1]  # between the time and location columns
+    time_ends = edge - 3
+    page.insert_text((time_ends - fitz.get_text_length(when, fontsize=8), 94), when, fontsize=8)
+    page.insert_text((time_ends - 4.7, 94), place, fontsize=8)  # starts on top of the "M"
+    assert rows_from_pdf(doc.tobytes()) == [["Student Debit Plan", when, place, "-$4.87", "$2.03"]]
 
 
 def test_count_rows():
@@ -64,6 +78,12 @@ def test_clean_keeps_only_spending_and_classifies_it():
     assert tx["terminal"].tolist() == ["1", "10", "2"]
     assert tx["is_swipe"].tolist() == [True, False, False]
     assert tx["amount"].tolist() == [1.0, 1.4, 19.5]
+
+
+@pytest.mark.parametrize("location", ["PAPERCUT LIBRARY LAB-BW2", "PRNT LIBRARY 3"])
+def test_printing_is_not_food(location):
+    tx = clean([["Student Debit Plan", "10/01/26 02:00:00 PM", location, "-$1.20", "$8.80"]])
+    assert tx["kind"].tolist() == ["printing"]
 
 
 def test_overlapping_pdfs_count_a_transaction_once():

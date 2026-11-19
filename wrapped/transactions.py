@@ -97,7 +97,7 @@ def rows_from_pdf(data: bytes) -> list[list[str]]:
             xs, ys = grid_edges(page)
             if len(xs) != len(RAW_COLUMNS) + 1:
                 continue
-            words = page.get_text("words", sort=True)
+            words = page_words(page)
             for y0, y1 in zip(ys, ys[1:]):
                 row = [cell_text(words, (x0, y0, x1, y1)) for x0, x1 in zip(xs, xs[1:])]
                 if any(row) and row[0] != HEADER_CELL:
@@ -132,6 +132,32 @@ def merge_close(values, tolerance=1.0) -> list[float]:
         if not merged or v - merged[-1] > tolerance:
             merged.append(v)
     return merged
+
+
+def page_words(page) -> list[tuple]:
+    """(x0, y0, x1, y1, text) for each word, like page.get_text("words"), but also split where
+    the text jumps backwards. GET centers a location too long for its column, so it spills over
+    the time and its first letter overlaps the "PM" with no space between; get_text("words")
+    makes that one word ("PMPAPERCUT") and the PM ends up in the location column."""
+    words = []
+    for block in page.get_text("rawdict")["blocks"]:
+        for line in block.get("lines", []):
+            chars, right = [], None
+            for span in line["spans"]:
+                for char in span["chars"]:
+                    x0, y0, x1, y1 = char["bbox"]
+                    if char["c"].isspace() or (right is not None and x0 < right - 0.5):
+                        words.append(chars)
+                        chars = []
+                    if not char["c"].isspace():
+                        chars.append((x0, y0, x1, y1, char["c"]))
+                    right = x1
+            words.append(chars)
+    return [
+        (min(c[0] for c in w), min(c[1] for c in w), max(c[2] for c in w), max(c[3] for c in w),
+         "".join(c[4] for c in w))
+        for w in words if w
+    ]
 
 
 def cell_text(words, cell) -> str:
@@ -268,7 +294,8 @@ def clean(rows: list[list[str]]) -> pd.DataFrame:
     tx["kind"] = "vendor"
     tx.loc[tx["hall"].notna(), "kind"] = "hall"
     tx.loc[tx["place"].str.contains("WASHER|DRYER"), "kind"] = "laundry"
-    tx.loc[tx["place"].str.contains("PRNT"), "kind"] = "printing"
+    # Library and lab printers: old "PRNT" terminals, Fall 2026 "PAPERCUT DUBOIS LIBR-LCBW1".
+    tx.loc[tx["place"].str.contains("PRNT|PAPERCUT"), "kind"] = "printing"
     tx = tx.sort_values("timestamp").reset_index(drop=True)
     tx["is_top_up"] = top_ups(tx)
     return tx
