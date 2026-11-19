@@ -46,6 +46,9 @@ That's the fastest way to check a change against real data. On Windows use `.ven
 - **Words are drawn separately.** PyMuPDF's `table.extract()` glues them (`08/20/2602:09:40PM`).
   Rows are rebuilt from the drawn grid (`grid_edges`) plus word positions. `find_tables()` was
   ~1s/page; don't go back to it.
+- **Long text spills into the next column.** GET centers a location too long for its column, so
+  it overlaps the time's AM/PM with no space between. `page_words` splits words where the text
+  jumps backwards; `get_text("words")` glued them (`PMPAPERCUT`) and lost the AM/PM.
 - **GET silently returns only the newest N rows per request.** N varies by person (14, 17 and 21
   seen). So history is downloaded in 5-day windows; a window with ≥10 rows (`MAYBE_CUT_OFF_ROWS`)
   is fetched again in halves. The results page warns when a PDF has ≥14 rows
