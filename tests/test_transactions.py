@@ -25,14 +25,14 @@ def test_keeps_spaces_when_words_are_drawn_separately():
 def test_long_location_spilling_over_the_time():
     # GET centers a location too long for its column, so it spills left and its first letter
     # overlaps the time's "PM" with no space between them. The two must not become one word.
-    when, place = "09/23/26 07:01:28 PM", "PAPERCUT DESIGN BLDG 260A"
-    doc = fitz.open("pdf", make_history_pdf([["Student Debit Plan", "", "", "-$4.87", "$2.03"]]))
+    when, place = "09/20/26 07:00:00 PM", "PAPERCUT LIBRARY LAB-BW2"
+    doc = fitz.open("pdf", make_history_pdf([["Student Debit Plan", "", "", "-$2.00", "$8.00"]]))
     page = doc[0]
     edge = 30 + COLUMN_WIDTHS[0] + COLUMN_WIDTHS[1]  # between the time and location columns
     time_ends = edge - 3
     page.insert_text((time_ends - fitz.get_text_length(when, fontsize=8), 94), when, fontsize=8)
     page.insert_text((time_ends - 4.7, 94), place, fontsize=8)  # starts on top of the "M"
-    assert rows_from_pdf(doc.tobytes()) == [["Student Debit Plan", when, place, "-$4.87", "$2.03"]]
+    assert rows_from_pdf(doc.tobytes()) == [["Student Debit Plan", when, place, "-$2.00", "$8.00"]]
 
 
 def test_count_rows():

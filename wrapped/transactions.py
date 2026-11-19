@@ -138,26 +138,28 @@ def page_words(page) -> list[tuple]:
     """(x0, y0, x1, y1, text) for each word, like page.get_text("words"), but also split where
     the text jumps backwards. GET centers a location too long for its column, so it spills over
     the time and its first letter overlaps the "PM" with no space between; get_text("words")
-    makes that one word ("PMPAPERCUT") and the PM ends up in the location column."""
+    makes that one word ("PMPAPERCUT") and the PM ends up in the location column. A jump under
+    1pt is kerning inside a word, not a new word. Sorted top to bottom, left to right."""
     words = []
-    for block in page.get_text("rawdict")["blocks"]:
+    for block in page.get_text("rawdict", flags=fitz.TEXTFLAGS_WORDS)["blocks"]:  # no images
         for line in block.get("lines", []):
             chars, right = [], None
             for span in line["spans"]:
                 for char in span["chars"]:
                     x0, y0, x1, y1 = char["bbox"]
-                    if char["c"].isspace() or (right is not None and x0 < right - 0.5):
+                    if char["c"].isspace() or (right is not None and x0 < right - 1):
                         words.append(chars)
                         chars = []
                     if not char["c"].isspace():
                         chars.append((x0, y0, x1, y1, char["c"]))
                     right = x1
             words.append(chars)
-    return [
+    boxes = [
         (min(c[0] for c in w), min(c[1] for c in w), max(c[2] for c in w), max(c[3] for c in w),
          "".join(c[4] for c in w))
         for w in words if w
     ]
+    return sorted(boxes, key=lambda w: (round(w[3]), w[0]))
 
 
 def cell_text(words, cell) -> str:
@@ -295,7 +297,7 @@ def clean(rows: list[list[str]]) -> pd.DataFrame:
     tx.loc[tx["hall"].notna(), "kind"] = "hall"
     tx.loc[tx["place"].str.contains("WASHER|DRYER"), "kind"] = "laundry"
     # Library and lab printers: old "PRNT" terminals, Fall 2026 "PAPERCUT DUBOIS LIBR-LCBW1".
-    tx.loc[tx["place"].str.contains("PRNT|PAPERCUT"), "kind"] = "printing"
+    tx.loc[tx["place"].str.contains("PRNT|PAPERCUT", case=False), "kind"] = "printing"
     tx = tx.sort_values("timestamp").reset_index(drop=True)
     tx["is_top_up"] = top_ups(tx)
     return tx
