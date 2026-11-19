@@ -192,8 +192,7 @@ def test_plan_that_would_last_for_centuries():
 @pytest.mark.parametrize("name, expected", [
     ("Tamales", "Tamales"),
     ("Yum Bakery", "Yum! Bakery"),
-    ("People's Organic Coffee", "People's Organic Coffee"),
-    ("Peoples Organic Coffee", "People's Organic Coffee"),
+    ("Peoples Organic Coffee", None),  # next to Blue Wall, not part of it
     ("Paciugo Gelato", "Paciugo"),
     ("CPOS The Grill", "The Grill"),
     ("The Grill 2", "The Grill"),
@@ -221,7 +220,7 @@ def test_blue_wall_recap():
     assert [(s.name, s.swipes) for s in bw.spots] == [("Green Fields", 3), ("Tamales", 3), ("Wasabi", 1)]
     assert bw.top.name == "Green Fields"
     assert "3" in bw.remark
-    assert (bw.tried, bw.of) == (3, 10)
+    assert (bw.tried, bw.of) == (3, 9)
     assert bw.spots[0].share == 1 and bw.spots[2].share == pytest.approx(1 / 3)
 
 
@@ -229,7 +228,7 @@ def test_the_grill_is_blue_wall():
     rows = [ycmp("CPOS The Grill", f"10/0{d}/26 12:00:00 PM") for d in (1, 2, 3)]
     bw = highlights(rows).blue_wall
     assert [(s.name, s.swipes) for s in bw.spots] == [("The Grill", 3)]
-    assert (bw.top.place, bw.of) == ("The Grill", 10)
+    assert (bw.top.place, bw.of) == ("The Grill", 9)
     assert bw.remark == REMARKS["The Grill"].format(n=3, s="s", t=3, ts="s")
 
 

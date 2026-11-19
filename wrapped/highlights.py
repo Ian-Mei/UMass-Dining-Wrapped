@@ -348,8 +348,8 @@ def fun_facts(food) -> FunFacts | None:
     )
 
 
-# Blue Wall, the Campus Center food court. Harvest Market is next door but separate, and so is
-# Peet's. Matched loosely because GET's names vary ("Yum Bakery", "CPOS Tamales").
+# Blue Wall, the Campus Center food court. Harvest Market is next door but separate, and so are
+# Peet's and People's Organic Coffee. Matched loosely because GET's names vary ("Yum Bakery", "CPOS Tamales").
 BLUE_WALL = {
     "Tavola": r"\btavola\b",
     "Tamales": r"\btamales\b",
@@ -358,7 +358,6 @@ BLUE_WALL = {
     "Green Fields": r"\bgreen fields\b",
     "Deli Delish": r"\bdeli delish\b",
     "Yum! Bakery": r"\byum\b",
-    "People's Organic Coffee": r"\bpeople'?s organic\b",
     "Paciugo": r"\bpaciugo\b",
     "The Grill": r"^(cpos )?the grill\b",  # anchored: "grill" is generic, unlike the others
 }
@@ -374,7 +373,6 @@ REMARKS = {
     "Green Fields": "{n} custom salad{s} and wraps. Somebody's actually eating their greens.",
     "Deli Delish": "{n} grinder{s} and hot-pressed sandwiches. Deli Delish should name one after you.",
     "Yum! Bakery": "{n} swipe{s} on cookies, cakes and macarons. Dessert counts as a meal if you swipe for it.",
-    "People's Organic Coffee": "{t} coffee run{ts}. People's Organic is basically fueling your GPA.",
     "Paciugo": "{t} trip{ts} for gelato. It's always gelato weather if you believe hard enough.",
     # Placeholder until the user writes this one.
     "The Grill": "{n} swipe{s} at The Grill.",

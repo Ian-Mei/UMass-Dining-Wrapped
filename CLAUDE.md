@@ -79,7 +79,7 @@ That's the fastest way to check a change against real data. On Windows use `.ven
 - Dining halls: Hamp, Worcester, Berk, Frank. Late night only at Worcester and Berk. Anything
   before 4am counts as the night before.
 - **Blue Wall** = Tavola, Tamales, Wasabi, Star Ginger, Green Fields, Deli Delish, Yum! Bakery,
-  People's Organic Coffee, Paciugo, The Grill. Harvest Market and Peet's are *not* Blue Wall
+  Paciugo, The Grill. Harvest Market, Peet's and People's Organic Coffee are *not* Blue Wall
   (Harvest has its own card from 5 swipes).
 - **Plans (YCMP etc.):** "Will you make it to finals?" projects each meal plan, and all
   dining-dollar accounts combined (RAs have an RA account GET spends first plus an untouched
