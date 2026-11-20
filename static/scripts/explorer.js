@@ -202,7 +202,8 @@ const Explorer = (() => {
       if (!link) return;
       if (!selectPlace(link.dataset.explorePlace)) return;  // let the #places link do its thing
       event.preventDefault();
-      document.getElementById("places").scrollIntoView({ behavior: "smooth" });
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      document.getElementById("places").scrollIntoView({ behavior: still ? "auto" : "smooth" });
     });
   };
 
