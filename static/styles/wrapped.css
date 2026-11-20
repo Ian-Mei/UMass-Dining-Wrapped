@@ -18,12 +18,18 @@ ul {
 html{
   scroll-snap-type: y mandatory;
 }
+/* Heights inside a screen: the smallest visible height (phone address bar showing), so the
+   content always fits. Plain vh where svh isn't supported. */
+:root { --vh: 1vh; }
+@supports (height: 1svh) {
+  :root { --vh: 1svh; }
+}
 body {
   background: white;
 }
 section {
   min-height: 100vh;
-  min-height: 100svh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -254,32 +260,27 @@ section .text-container .text-box li{
    shrinks away when the content needs it, so the screen never grows past the window. */
 #personality::after {
   content: "";
-  flex: 0 1 10vh;
-  flex: 0 1 10svh;
+  flex: 0 1 calc(10 * var(--vh));
 }
 #personality .wheelscreen {
-  --card-w: clamp(110px, 25vh, 220px);
-  --card-w: clamp(110px, 25svh, 220px);
+  --card-w: clamp(110px, calc(25 * var(--vh)), 220px);
   width: 100%;
   z-index: 1;
 }
 @media (max-width: 600px), (max-height: 720px) {
   #personality::after {
-    flex-basis: 5vh;
-    flex-basis: 5svh;
+    flex-basis: calc(5 * var(--vh));
   }
 }
 /* Cards as big as the window's height leaves room for. */
 @media (max-height: 720px) {
   #personality .wheelscreen {
-    --card-w: clamp(96px, 21vh, 220px);
-    --card-w: clamp(96px, 21svh, 220px);
+    --card-w: clamp(96px, calc(21 * var(--vh)), 220px);
   }
 }
 @media (max-height: 600px) {
   #personality .wheelscreen {
-    --card-w: clamp(96px, 18vh, 220px);
-    --card-w: clamp(96px, 18svh, 220px);
+    --card-w: clamp(96px, calc(18 * var(--vh)), 220px);
   }
 }
 @media (max-width: 600px) {
@@ -738,8 +739,7 @@ section.stat h2.stat-intro {
 .heatmap {
   /* Squares grow with the card's width, so cap them by screen height too, or a short laptop
      screen gets a calendar taller than the window (and scroll-snap stops working). */
-  --cell: min(34px, 3.8vh);
-  --cell: min(34px, 3.8svh);
+  --cell: min(34px, calc(3.8 * var(--vh)));
   display: grid;
   grid-template-columns: 26px repeat(var(--cols), minmax(0, 1fr));
   gap: 3px;
@@ -900,15 +900,13 @@ section.harvest { background: linear-gradient(160deg, #e0892b, #9c4a12); }
     font-size: 28px;
   }
   .heatmap {
-    --cell: min(34px, 3.3vh);
-    --cell: min(34px, 3.3svh);
+    --cell: min(34px, calc(3.3 * var(--vh)));
   }
   .statcard .tile {
     padding: 5px 8px;
   }
   section.stat h2.stat-intro {
-    font-size: clamp(20px, 3.4vh, 30px);
-    font-size: clamp(20px, 3.4svh, 30px);
+    font-size: clamp(20px, calc(3.4 * var(--vh)), 30px);
   }
   .statcard .listheader {
     height: 64px;
@@ -981,8 +979,7 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
-  width: min(100% - 24px, calc(7 * min(40px, 5vh) + 24px));
-  width: min(100% - 24px, calc(7 * min(40px, 5svh) + 24px));
+  width: min(100% - 24px, calc(7 * min(40px, calc(5 * var(--vh))) + 24px));
   margin: 10px auto 4px;
 }
 .xweekday {
@@ -1001,7 +998,7 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
   font: 600 11px "Asap", sans-serif;
 }
 .xcell.empty { background: transparent; }
-.xcell:disabled { cursor: default; color: #8e92a4; }
+.xcell:disabled { cursor: default; color: #7d8296; }
 .xcell.l1 { background: #c6f3e6; }
 .xcell.l2 { background: #86e3c8; }
 .xcell.l3 { background: #35d8ac; }  /* dark text: white on mint is 1.8:1 */
@@ -1037,13 +1034,11 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
 }
 .xplace-sum { padding: 0 14px 6px; }
 .xday-list, .xvisit-list {
-  max-height: min(220px, 28vh);
-  max-height: min(220px, 28svh);
+  max-height: min(220px, calc(28 * var(--vh)));
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-.xvisit-list { max-height: min(300px, 40vh); }
-.xvisit-list { max-height: min(300px, 40svh); }
+.xvisit-list { max-height: min(300px, calc(40 * var(--vh))); }
 .xrow {
   display: grid;
   grid-template-columns: 70px 1fr auto;
@@ -1109,8 +1104,7 @@ a.listitem.explorable { color: inherit; cursor: pointer; text-decoration: none; 
 
 /* All your data: one small table per section (dining halls, Blue Wall, ...), scrolling inside the card. */
 .rawdata {
-  max-height: min(460px, 62vh);
-  max-height: min(460px, 62svh);
+  max-height: min(460px, calc(62 * var(--vh)));
   overflow: auto;
   overscroll-behavior: contain;
   padding: 4px 10px 10px;
@@ -1164,13 +1158,11 @@ a.listitem.explorable { color: inherit; cursor: pointer; text-decoration: none; 
 @media (max-height: 720px) {
   .xmonth {
     gap: 3px;
-    width: min(100% - 24px, calc(7 * max(24px, min(40px, 4vh)) + 18px));
-    width: min(100% - 24px, calc(7 * max(24px, min(40px, 4svh)) + 18px));
+    width: min(100% - 24px, calc(7 * max(24px, min(40px, calc(4 * var(--vh)))) + 18px));
     margin: 6px auto 2px;
   }
   .xday-head { padding: 4px 14px 2px; }
-  .xday-list { max-height: 21vh; }
-  .xday-list { max-height: 21svh; }
+  .xday-list { max-height: calc(21 * var(--vh)); }
   .xbusiest-note { margin-top: 0; }
   .xday-nav { padding: 2px 10px; }
 }

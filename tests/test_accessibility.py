@@ -8,7 +8,7 @@ from .conftest import charge, make_history_pdf, swipe
 from .test_app import client, upload  # noqa: F401  (client is a fixture)
 
 CSS = (Path(__file__).parent.parent / "static" / "styles" / "wrapped.css").read_text(encoding="utf8")
-CSS_NO_COMMENTS = re.sub(r"/\*.*?\*/", "", CSS, flags=re.S)
+CSS_NO_COMMENTS = re.sub(r"/\*.*?\*/|@import[^;]*;", "", CSS, flags=re.S)
 
 
 def luminance(hex_color):
@@ -34,10 +34,33 @@ def solid(value):
     return value if re.fullmatch(r"#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?", value) else None
 
 
+def flatten_nesting(css):
+    """Turn `.a { color: x; & > span { ... } }` into `.a { color: x; } .a > span { ... }`."""
+    # A nested rule comes after at least one declaration, which tells it apart from the first
+    # rule inside an @media block.
+    nested = re.compile(r"([^{}]+)\{((?:[^{};]*;)+)([^{};]+)\{([^{}]*)\}([^{}]*)\}")
+
+    def unnest(m):
+        outer, inner = m.group(1).strip(), m.group(3).strip()
+        inner = inner.replace("&", outer) if "&" in inner else f"{outer} {inner}"
+        return f"{m.group(1)}{{{m.group(2)}{m.group(5)}}}\n{inner}{{{m.group(4)}}}"
+
+    while True:
+        css, n = nested.subn(unnest, css)
+        if not n:
+            return css
+
+
 def rules():
-    """(selector, declarations) for every rule outside @media blocks' nesting quirks."""
-    for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", CSS_NO_COMMENTS):
+    """(selector, declarations) for every rule, @media blocks included."""
+    for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", flatten_nesting(CSS_NO_COMMENTS)):
         yield " ".join(m.group(1).split()), m.group(2)
+
+
+def test_every_rule_parses():
+    """A selector with a declaration in it means the parser lost track (e.g. new nesting)."""
+    junk = [s for s, _ in rules() if ";" in s or re.search(r":\s", s)]
+    assert not junk
 
 
 def declared(body, prop):
@@ -49,19 +72,35 @@ def declared(body, prop):
 ON_WHITE_CARDS = (".statcard", ".heatmap", ".x", ".rawdata", ".rawnote", ".listbox .list")
 # Disabled controls are exempt from WCAG's contrast rule; still keep them readable.
 DISABLED_MIN = 3.0
-# Big mint numbers are the page's signature look; they're large text but still below 3:1.
+# Mint numbers are the page's signature look, but #35d8ac is 1.8:1 on white.
 # Left as they are on purpose (see the PR).
-BRAND_MINT_NUMBERS = {".statcard .big", ".statcard .tilevalue", ".statcard .planverdict.ok"}
+BRAND_MINT_NUMBERS = {
+    ".statcard .big", ".statcard .tilevalue", ".statcard .planverdict.ok",
+    ".listbox .list .listitem .itemvalue", ".listbox .list .listitem .itemvalue > span",
+}
+
+
+def background_of(selector, all_rules):
+    """The rule's own solid background, else its base rule's (`.xcell` for `.xcell:disabled`)."""
+    while selector:
+        bg = solid(declared(all_rules.get(selector, ""), "background(?:-color)?") or "")
+        if bg:
+            return bg
+        base = re.sub(r"(:[\w-]+|\.[\w-]+)$", "", selector)
+        if base == selector or base.endswith(" "):
+            break
+        selector = base
+    return "#ffffff"
 
 
 def card_text_rules():
-    for selector, body in rules():
+    all_rules = dict(rules())
+    for selector, body in all_rules.items():
         if selector in BRAND_MINT_NUMBERS or not selector.startswith(ON_WHITE_CARDS):
             continue
         fg = solid(declared(body, "color") or "")
         if fg:
-            bg = solid(declared(body, "background") or declared(body, "background-color") or "#ffffff")
-            yield selector, fg, bg or "#ffffff"
+            yield selector, fg, background_of(selector, all_rules)
 
 
 def test_found_the_card_text_rules():
@@ -95,11 +134,19 @@ def test_respects_reduced_motion():
         assert needed in block.group(1)
 
 
-def test_screens_use_the_visible_height_on_phones():
-    """100vh is taller than the visible area while a phone's address bar shows; svh never is."""
+def test_screens_fill_the_window_on_phones():
+    """dvh follows the phone's address bar showing and hiding; vh first as a fallback."""
     section = dict(rules())["section"]
-    assert "100svh" in section
-    assert section.index("100vh") < section.index("100svh")  # vh first, as a fallback
+    assert section.index("100vh") < section.index("100dvh")
+
+
+def test_heights_inside_screens_fit_with_the_address_bar_showing():
+    """Content sizes use --vh: svh where supported, else vh. Custom properties can't take a
+    vh-then-svh fallback (the last one always wins), hence the token."""
+    assert re.search(r"@supports \(height: 1svh\)\s*\{\s*:root \{ --vh: 1svh; \}", CSS_NO_COMMENTS)
+    for selector, body in rules():
+        if selector != "section" and not selector.startswith(":root"):
+            assert not re.search(r"\d(vh|svh|dvh)", body), selector
 
 
 def test_background_pictures_are_hidden_from_screen_readers(client):  # noqa: F811
