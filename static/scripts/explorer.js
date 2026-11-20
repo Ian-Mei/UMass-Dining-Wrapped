@@ -105,10 +105,22 @@ const Explorer = (() => {
     const prevMonth = daysCard.querySelector(".xmonth-prev");
     const nextMonth = daysCard.querySelector(".xmonth-next");
 
+    // Disabling the focused button would drop keyboard focus to <body>, so enable the pair first
+    // and hand focus to the other one before disabling.
+    const setPair = (prev, prevOff, next, nextOff) => {
+      if (!prevOff) prev.disabled = false;
+      if (!nextOff) next.disabled = false;
+      for (const [button, off, other] of [[prev, prevOff, next], [next, nextOff, prev]]) {
+        if (off && document.activeElement === button && !other.disabled) other.focus();
+        button.disabled = off;
+      }
+    };
+
     const drawMonth = () => {
       monthTitle.textContent = `${MONTHS[shown.getMonth()]} ${shown.getFullYear()}`;
-      prevMonth.disabled = monthIndex(shown) <= firstMonth;
-      nextMonth.disabled = monthIndex(shown) >= lastMonth;
+      setPair(prevMonth, monthIndex(shown) <= firstMonth, nextMonth, monthIndex(shown) >= lastMonth);
+      // Redrawing removes the focused day; put focus back on the picked one.
+      const hadFocus = grid.contains(document.activeElement);
       grid.replaceChildren(...WEEKDAYS.map((d) => el("span", "xweekday", d[0])));
       for (const day of monthCells(shown.getFullYear(), shown.getMonth())) {
         if (!day) { grid.append(el("span", "xcell empty")); continue; }
@@ -116,9 +128,12 @@ const Explorer = (() => {
         const cell = el("button", `xcell l${level(visits[day])}${busiest}${day === selected ? " sel" : ""}`, String(parseDay(day).getDate()));
         cell.type = "button";
         cell.disabled = !byDay.has(day);
+        cell.setAttribute("aria-label", dayLabel(day) + (busiest ? ", your busiest day" : ""));
+        cell.setAttribute("aria-pressed", String(day === selected));
         cell.addEventListener("click", () => selectDay(day));
         grid.append(cell);
       }
+      if (hadFocus) (grid.querySelector(".sel") || prevMonth).focus();
     };
 
     const selectDay = (day) => {
@@ -128,8 +143,7 @@ const Explorer = (() => {
       dayHead.replaceChildren(el("span", "", dayLabel(day)), el("span", "xsum", totals(list) || "Nothing bought"));
       dayList.replaceChildren(...list.map((p) => purchaseRow(p, true)));
       const i = days.indexOf(day);
-      prevDay.disabled = i <= 0;
-      nextDay.disabled = i < 0 || i >= days.length - 1;
+      setPair(prevDay, i <= 0, nextDay, i < 0 || i >= days.length - 1);
       prevDay.textContent = i > 0 ? `← ${dayLabel(days[i - 1])}` : "";
       nextDay.textContent = i >= 0 && i < days.length - 1 ? `${dayLabel(days[i + 1])} →` : "";
       drawMonth();
@@ -165,7 +179,11 @@ const Explorer = (() => {
     const selectPlace = (name) => {
       const place = data.places.find((p) => p.name === name);
       if (!place) return false;
-      for (const chip of chips.children) chip.classList.toggle("on", chip.dataset.place === place.name);
+      for (const chip of chips.children) {
+        const on = chip.dataset.place === place.name;
+        chip.classList.toggle("on", on);
+        chip.setAttribute("aria-pressed", String(on));
+      }
       const theirs = purchases.filter((p) => p.in_places && p.spot === place.name);
       const spent = totals(theirs) || "Nothing bought";
       summary.textContent = `${spent} over ${place.visits} visit${place.visits === 1 ? "" : "s"}`;
@@ -202,7 +220,10 @@ const Explorer = (() => {
       if (!link) return;
       if (!selectPlace(link.dataset.explorePlace)) return;  // let the #places link do its thing
       event.preventDefault();
-      document.getElementById("places").scrollIntoView({ behavior: "smooth" });
+      // Move keyboard focus along with the page, so Tab carries on from the picked place.
+      chips.querySelector(".on").focus({ preventScroll: true });
+      // No behavior given: follows the CSS scroll-behavior, which is off with reduced motion.
+      document.getElementById("places").scrollIntoView();
     });
   };
 

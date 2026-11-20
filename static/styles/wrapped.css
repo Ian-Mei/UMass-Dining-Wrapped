@@ -18,11 +18,18 @@ ul {
 html{
   scroll-snap-type: y mandatory;
 }
+/* Heights inside a screen: the smallest visible height (phone address bar showing), so the
+   content always fits. Plain vh where svh isn't supported. */
+:root { --vh: 1vh; }
+@supports (height: 1svh) {
+  :root { --vh: 1svh; }
+}
 body {
   background: white;
 }
 section {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -217,7 +224,7 @@ section .text-container .text-box li{
   
   
   .listbox .list .listitem .itemname {
-    color: #979cb0;
+    color: #6b7088;
     font-weight: 600;
     font-size: 20px;
     letter-spacing: 0.64px;
@@ -253,27 +260,27 @@ section .text-container .text-box li{
    shrinks away when the content needs it, so the screen never grows past the window. */
 #personality::after {
   content: "";
-  flex: 0 1 10vh;
+  flex: 0 1 calc(10 * var(--vh));
 }
 #personality .wheelscreen {
-  --card-w: clamp(110px, 25vh, 220px);
+  --card-w: clamp(110px, calc(25 * var(--vh)), 220px);
   width: 100%;
   z-index: 1;
 }
 @media (max-width: 600px), (max-height: 720px) {
   #personality::after {
-    flex-basis: 5vh;
+    flex-basis: calc(5 * var(--vh));
   }
 }
 /* Cards as big as the window's height leaves room for. */
 @media (max-height: 720px) {
   #personality .wheelscreen {
-    --card-w: clamp(96px, 21vh, 220px);
+    --card-w: clamp(96px, calc(21 * var(--vh)), 220px);
   }
 }
 @media (max-height: 600px) {
   #personality .wheelscreen {
-    --card-w: clamp(96px, 18vh, 220px);
+    --card-w: clamp(96px, calc(18 * var(--vh)), 220px);
   }
 }
 @media (max-width: 600px) {
@@ -687,7 +694,7 @@ section.stat h2.stat-intro {
   line-height: 1.05;
 }
 .statcard .caption {
-  color: #979cb0;
+  color: #6b7088;
   font-size: 15px;
   font-weight: 600;
   margin: 2px 0 10px;
@@ -695,7 +702,7 @@ section.stat h2.stat-intro {
 }
 .statcard .stamp {
   background: #f5f6fa;
-  color: #979cb0;
+  color: #6b7088;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: .08em;
@@ -723,7 +730,7 @@ section.stat h2.stat-intro {
   font-weight: 700;
 }
 .statcard .tilelabel {
-  color: #979cb0;
+  color: #6b7088;
   font-size: 13px;
   font-weight: 600;
 }
@@ -732,7 +739,7 @@ section.stat h2.stat-intro {
 .heatmap {
   /* Squares grow with the card's width, so cap them by screen height too, or a short laptop
      screen gets a calendar taller than the window (and scroll-snap stops working). */
-  --cell: min(34px, 3.8vh);
+  --cell: min(34px, calc(3.8 * var(--vh)));
   display: grid;
   grid-template-columns: 26px repeat(var(--cols), minmax(0, 1fr));
   gap: 3px;
@@ -740,7 +747,7 @@ section.stat h2.stat-intro {
   margin: 6px auto 8px;
 }
 .heatmap .axis {
-  color: #979cb0;
+  color: #6b7088;
   font-size: 10px;
   font-weight: 600;
   line-height: 1;
@@ -757,11 +764,11 @@ section.stat h2.stat-intro {
 .cell.l1 { background: #c6f3e6; }
 .cell.l2 { background: #86e3c8; }
 .cell.l3 { background: #35d8ac; }
-.cell.l4 { background: #168f6e; }
+.cell.l4 { background: #137a5e; }
 .cell.out { background: transparent; }
 .cell.streak { box-shadow: inset 0 0 0 2px #f2c200; }
 .statcard .legend {
-  color: #979cb0;
+  color: #6b7088;
   font-size: 11px;
   font-weight: 600;
   display: flex;
@@ -782,7 +789,7 @@ section.stat h2.stat-intro {
   border-bottom: none;
 }
 .statcard .planlabel {
-  color: #979cb0;
+  color: #6b7088;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: .08em;
@@ -792,7 +799,7 @@ section.stat h2.stat-intro {
   font-size: clamp(22px, 6vw, 28px);
   font-weight: 700;
 }
-.statcard .planverdict.out { color: #e5484d; }
+.statcard .planverdict.out { color: #cf3a3f; }
 .statcard .planverdict.ok { color: #35d8ac; }
 .statcard .planverdict + .caption {
   margin-bottom: 2px;
@@ -863,7 +870,7 @@ section.harvest { background: linear-gradient(160deg, #e0892b, #9c4a12); }
   gap: 8px;
   align-items: center;
   margin: 8px 0;
-  color: #979cb0;
+  color: #6b7088;
   font-size: 14px;
   font-weight: 600;
   text-align: left;
@@ -893,13 +900,13 @@ section.harvest { background: linear-gradient(160deg, #e0892b, #9c4a12); }
     font-size: 28px;
   }
   .heatmap {
-    --cell: min(34px, 3.3vh);
+    --cell: min(34px, calc(3.3 * var(--vh)));
   }
   .statcard .tile {
     padding: 5px 8px;
   }
   section.stat h2.stat-intro {
-    font-size: clamp(20px, 3.4vh, 30px);
+    font-size: clamp(20px, calc(3.4 * var(--vh)), 30px);
   }
   .statcard .listheader {
     height: 64px;
@@ -972,11 +979,11 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
-  width: min(100% - 24px, calc(7 * min(40px, 5vh) + 24px));
+  width: min(100% - 24px, calc(7 * min(40px, calc(5 * var(--vh))) + 24px));
   margin: 10px auto 4px;
 }
 .xweekday {
-  color: #979cb0;
+  color: #6b7088;
   font-size: 11px;
   font-weight: 700;
   text-align: center;
@@ -991,16 +998,16 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
   font: 600 11px "Asap", sans-serif;
 }
 .xcell.empty { background: transparent; }
-.xcell:disabled { cursor: default; color: #c3c6d3; }
+.xcell:disabled { cursor: default; color: #7d8296; }
 .xcell.l1 { background: #c6f3e6; }
 .xcell.l2 { background: #86e3c8; }
-.xcell.l3 { background: #35d8ac; color: white; }
-.xcell.l4 { background: #168f6e; color: white; }
+.xcell.l3 { background: #35d8ac; }  /* dark text: white on mint is 1.8:1 */
+.xcell.l4 { background: #137a5e; color: white; }
 .xcell.sel { box-shadow: 0 0 0 2px #42455a; }
 /* Their busiest day (the one in Fun Facts). */
 .xcell.busiest { background: #f2c200; color: #42455a; }
 .xbusiest-note {
-  color: #979cb0;
+  color: #6b7088;
   font-size: 12px;
   font-weight: 600;
   margin: 2px 14px 0;
@@ -1021,17 +1028,17 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
   font-size: 16px;
 }
 .xsum, .xplace-sum {
-  color: #979cb0;
+  color: #6b7088;
   font-size: 13px;
   font-weight: 600;
 }
 .xplace-sum { padding: 0 14px 6px; }
 .xday-list, .xvisit-list {
-  max-height: min(220px, 28vh);
+  max-height: min(220px, calc(28 * var(--vh)));
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-.xvisit-list { max-height: min(300px, 40vh); }
+.xvisit-list { max-height: min(300px, calc(40 * var(--vh))); }
 .xrow {
   display: grid;
   grid-template-columns: 70px 1fr auto;
@@ -1041,7 +1048,7 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
   border-top: 1px solid #f0f1f5;
   font-size: 14px;
 }
-.xtime { color: #979cb0; font-size: 12px; font-weight: 600; }
+.xtime { color: #6b7088; font-size: 12px; font-weight: 600; }
 .xplace { font-weight: 600; }
 .xtags { display: flex; gap: 4px; }
 .xtag {
@@ -1051,8 +1058,8 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
   padding: 2px 7px;
   white-space: nowrap;
 }
-.xtag.swipe { background: #e3f8f1; color: #168f6e; }
-.xtag.dollars { background: #fff4d6; color: #a86b00; }
+.xtag.swipe { background: #e3f8f1; color: #137a5e; }
+.xtag.dollars { background: #fff4d6; color: #8a5800; }
 .xtag.topup { background: #ede7ff; color: #6a4fd1; }
 .xdate {
   background: #f5f6fa;
@@ -1097,7 +1104,7 @@ a.listitem.explorable { color: inherit; cursor: pointer; text-decoration: none; 
 
 /* All your data: one small table per section (dining halls, Blue Wall, ...), scrolling inside the card. */
 .rawdata {
-  max-height: min(460px, 62vh);
+  max-height: min(460px, calc(62 * var(--vh)));
   overflow: auto;
   overscroll-behavior: contain;
   padding: 4px 10px 10px;
@@ -1120,7 +1127,7 @@ a.listitem.explorable { color: inherit; cursor: pointer; text-decoration: none; 
   white-space: nowrap;
 }
 .rawdata thead th {
-  color: #979cb0;
+  color: #6b7088;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -1137,7 +1144,7 @@ a.listitem.explorable { color: inherit; cursor: pointer; text-decoration: none; 
 }
 .rawdata td { color: #42455a; font-variant-numeric: tabular-nums; }
 .rawnote {
-  color: #979cb0;
+  color: #6b7088;
   font-size: 11px;
   margin: 10px 4px 0;
 }
@@ -1151,11 +1158,32 @@ a.listitem.explorable { color: inherit; cursor: pointer; text-decoration: none; 
 @media (max-height: 720px) {
   .xmonth {
     gap: 3px;
-    width: min(100% - 24px, calc(7 * min(40px, 4vh) + 18px));
+    width: min(100% - 24px, calc(7 * max(24px, min(40px, calc(4 * var(--vh)))) + 18px));
     margin: 6px auto 2px;
   }
   .xday-head { padding: 4px 14px 2px; }
-  .xday-list { max-height: 21vh; }
+  .xday-list { max-height: calc(21 * var(--vh)); }
   .xbusiest-note { margin-top: 0; }
   .xday-nav { padding: 2px 10px; }
+}
+
+/* Keyboard focus: a ring that shows on both the white cards and the dark screens. */
+:focus-visible {
+  outline: 3px solid #6a4fd1;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px white;
+}
+
+/* Small buttons get at least WCAG 2.2's 24px target. */
+.xday-nav button, .explore-link { min-height: 32px; }
+.xchip { min-height: 28px; }
+#personality .wheelmore { min-height: 32px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto; }
+  .reveal, .dramaticreveal {
+    transform: none;
+    opacity: 1;
+    transition: none;
+  }
 }

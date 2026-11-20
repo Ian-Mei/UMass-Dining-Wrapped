@@ -14,7 +14,7 @@
         {# Places that Explore your places lists, so links only point at ones it has. #}
         {% set explorable = h.explorer.places|map(attribute="name")|list %}
         <section id="home">
-          <img src="{{ url_for('static', filename='styles/imgs/background1.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background1.png') }}" class="background" alt="">
           <div class="container reveal">
             <h1>Welcome to {{ w.semester_short }} UMass Dining Wrapped &#8595;</h1>
             {% if maybe_cut_off %}
@@ -28,7 +28,7 @@
         {% if w.favorite_hall %}
         {% set fav = swipes[w.favorite_hall] %}
         <section id="favDC">
-          <img src="{{ url_for('static', filename='styles/imgs/background2.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background2.png') }}" class="background" alt="">
           <div class="container reveal">
             <h2>Out of all the Dining Halls<br> one had a special place in your heart</h2>
             <div class="text-container">
@@ -61,7 +61,7 @@
 
         {% if h.routine %}
         <section id="routine" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background2.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background2.png') }}" class="background" alt="">
           <div class="container reveal">
             <h2 class="stat-intro">You're a creature of habit</h2>
             <div class="listbox statcard">
@@ -137,7 +137,7 @@
         {% if h.top_ups %}
         {% set t = h.top_ups %}
         <section id="topups" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background2.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background2.png') }}" class="background" alt="">
           <div class="container reveal">
             <h2 class="stat-intro">When a swipe wasn't enough</h2>
             <div class="listbox statcard">
@@ -162,7 +162,7 @@
 
         {% if not w.vendors.empty %}
         <section id="top3vendors" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background3.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background3.png') }}" class="background" alt="">
           <div class="container reveal">
             <h2 class="stat-intro">You used a lot of dining dollars, lets see where you spent them</h2>
             <div class="listbox statcard dramaticreveal">
@@ -185,7 +185,7 @@
         {% if h.clock %}
         {% set c = h.clock %}
         <section id="clock" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background5.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background5.png') }}" class="background" alt="">
           <div class="container reveal">
             <h2 class="stat-intro">Your dining clock</h2>
             <div class="listbox statcard">
@@ -217,7 +217,7 @@
 
         {% if h.calendar.weeks %}
         <section id="calendar" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background1.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background1.png') }}" class="background" alt="">
           <div class="container reveal">
             <h2 class="stat-intro">Your semester, day by day</h2>
             <div class="listbox statcard">
@@ -244,7 +244,7 @@
         {% if h.fun %}
         {% set f = h.fun %}
         <section id="funfacts" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background3.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background3.png') }}" class="background" alt="">
           <div class="container reveal">
             <h2 class="stat-intro">A few more things we noticed</h2>
             <div class="listbox statcard">
@@ -274,7 +274,7 @@
 
         {% if w.laundry %}
         <section id="laundry">
-          <img src="{{ url_for('static', filename='styles/imgs/background3.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background3.png') }}" class="background" alt="">
           <div class="container reveal">
             <h2>And some clean clothes along the way</h2>
             <div class="text-container">
@@ -312,7 +312,7 @@
 
         {% if h.plans %}
         <section id="plans" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background4.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background4.png') }}" class="background" alt="">
           <div class="container reveal">
             <h2 class="stat-intro">Will you make it to finals?</h2>
             <div class="listbox statcard">
@@ -347,7 +347,7 @@
         {% endif %}
 
         <section id="personality">
-          <img src="{{ url_for('static', filename='styles/imgs/background4.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background4.png') }}" class="background" alt="">
           {# static/scripts/personality-wheel.js spins the wheel the first time this screen shows. #}
           <div class="container wheelscreen" id="wheel" data-owned="{{ w.personalities|map(attribute='name')|list|tojson|forceescape }}">
             <h1>UMass Dining Personalities</h1>
@@ -381,7 +381,7 @@
 
         {% if h.raw_sections %}
         <section id="tables" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background5.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background5.png') }}" class="background" alt="">
           <div class="container reveal">
             <h2 class="stat-intro">All your data</h2>
             <div class="listbox statcard">
@@ -451,7 +451,7 @@
         {% endif %}
 
         <section id = "card">
-          <img src="{{ url_for('static', filename='styles/imgs/background1.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background1.png') }}" class="background" alt="">
           <div class = "container reveal">
           <div class="info-card">
             <div class="div">
@@ -474,7 +474,7 @@
               <div class="rectangle"></div>
               <div class="text-wrapper-3">{{ w.semester_short }} Wrapped</div>
               {% if name %}<div class="text-wrapper-4">{{ name }}</div>{% endif %}
-              <img class="umassdiningwrapped" src="{{ url_for('static', filename='styles/imgs/UMassDiningWrapped.jpg') }}" />
+              <img class="umassdiningwrapped" src="{{ url_for('static', filename='styles/imgs/UMassDiningWrapped.jpg') }}" alt="UMass Dining Wrapped" />
               <div class="text-wrapper-5">Mealswipes Used</div>
               <div class="text-wrapper-6">{{ w.total_swipes }}</div>
               <div class="text-wrapper-7">Dining Dollars Used</div>
@@ -486,7 +486,7 @@
 
 
         <section id="end">
-          <img src="{{ url_for('static', filename='styles/imgs/background7.png') }}" class="background">
+          <img src="{{ url_for('static', filename='styles/imgs/background7.png') }}" class="background" alt="">
           <div class="container reveal">
             <h1>Thanks for using my app! <br>Check out my socials and other things I've made on my <a href="https://ian-mei.github.io" target="_blank" rel="noopener">Website</a></h1>
             <p class="feedback">Something off, or an idea? <a href="{{ feedback_url }}" target="_blank" rel="noopener">Tell me in this form</a></p>
