@@ -246,6 +246,12 @@ section#personality .wheelscreen h1 { color: var(--fg); }
 #personality .wheelmore { color: #16d0a6; }
 #personality .wheelinfo .stamp { background: #1f1f1f; color: #c9c9d6; }
 
+/* The wheel spins in the middle of the screen, then slides over as its card comes in. */
+#wheel.wheel-js:not(.landed) .wheelstage { transform: translate(var(--wheel-x, 0), var(--wheel-y, 0)); }
+#wheel.wheel-js.landed .wheelstage { transition: transform .8s cubic-bezier(.22, 1, .36, 1); }
+#wheel.wheel-js:not(.landed) .wheelinfo { translate: 0 18px; }
+#wheel.wheel-js.landed .wheelinfo { transition: opacity .5s ease .3s, translate .65s cubic-bezier(.22, 1, .36, 1) .25s; }
+
 /* Short laptop windows: the wheel and its card side by side, so the card always fits. */
 @media (min-width: 761px) and (max-height: 820px) {
   #personality::after { display: none; }
@@ -265,6 +271,7 @@ section#personality .wheelscreen h1 { color: var(--fg); }
     font-size: min(3vw, calc(7 * var(--vh)));
   }
   #personality .wheelstage { grid-column: 1; grid-row: 2; }
+  #wheel.wheel-js:not(.landed) .wheelinfo { translate: 28px 0; }
   #personality .wheelinfo {
     grid-column: 2;
     grid-row: 2;
@@ -408,4 +415,6 @@ html.blend section.in .container, html.blend section.in .shareline {
   .in .sprite, .in .container, .in .shareline, .in .big .clone, .in .big.cloned { animation: none; }
   .sharebtn { transition: none; }
   .art { opacity: 1; scale: none; }
+  #wheel.wheel-js.landed .wheelstage, #wheel.wheel-js:not(.landed) .wheelstage { transform: none; transition: none; }
+  #wheel.wheel-js.landed .wheelinfo, #wheel.wheel-js:not(.landed) .wheelinfo { translate: none; transition: none; }
 }

@@ -33,6 +33,14 @@ const PersonalityWheel = (() => {
     return out;
   };
 
+  // How far to move the wheel so it spins in the middle of the screen, below the title.
+  const centerOffset = (stage, frame, minTop) => {
+    const x = frame.width / 2 - (stage.left + stage.width / 2);
+    const middle = frame.height / 2 - (stage.top + stage.height / 2);
+    const y = Math.max(Math.min(middle, frame.height - stage.top - stage.height), minTop - stage.top);
+    return { x, y };
+  };
+
   const easeOut = (t) => 1 - Math.pow(1 - t, 4);
   const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 
@@ -44,6 +52,24 @@ const PersonalityWheel = (() => {
     const more = root.querySelector(".wheelmore");
     const count = root.querySelector(".wheelcount");
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const screen = root.closest("section");
+    const title = root.querySelector("h1");
+
+    // Until it lands, the wheel sits in the middle; landing lets CSS slide it to its place.
+    // Uses layout positions, so the screen's entrance animation can't throw it off.
+    const centerStage = () => {
+      if (reduceMotion || root.classList.contains("landed")) return;
+      const box = {
+        left: root.offsetLeft + stage.offsetLeft,
+        top: root.offsetTop + stage.offsetTop,
+        width: stage.offsetWidth,
+        height: stage.offsetHeight,
+      };
+      const minTop = root.offsetTop + title.offsetTop + title.offsetHeight + 6;
+      const { x, y } = centerOffset(box, { width: screen.clientWidth, height: screen.clientHeight }, minTop);
+      stage.style.setProperty("--wheel-x", `${x}px`);
+      stage.style.setProperty("--wheel-y", `${y}px`);
+    };
 
     // Shuffled so the spin shows them in a different order every time.
     let cards = shuffle([...ring.querySelectorAll(".wheelcard")]).map((el, i, all) => ({
@@ -125,6 +151,7 @@ const PersonalityWheel = (() => {
       const main = cards.find((c) => c.name === owned[0]);
       const to = -main.slot - 360 * SPIN_TURNS, from = to + 360 * SPIN_TURNS + Math.random() * 360;
       const depth = stage.offsetHeight;
+      centerStage();
       root.classList.add("spinning");
       animate(reduceMotion ? 1 : SPIN_MS, (t) => {
         rise = depth * Math.pow(1 - Math.min(1, t * 2.5), 3);  // floats up in the first ~1.7s
@@ -165,6 +192,7 @@ const PersonalityWheel = (() => {
     // Cards are sized by the window's height, so the ring's radius follows it. (Not while their
     // cards are closing up: that animation sets the radius itself.)
     window.addEventListener("resize", () => {
+      centerStage();
       if (browsing && !ready) return;
       radius = radiusFor(cards.length, cardWidth());
       render();
@@ -172,6 +200,7 @@ const PersonalityWheel = (() => {
 
     // Hidden below until the screen shows, then it plays once.
     rise = stage.offsetHeight;
+    centerStage();
     render();
     new IntersectionObserver((entries, observer) => {
       if (!entries.some((e) => e.isIntersecting)) return;
@@ -180,7 +209,7 @@ const PersonalityWheel = (() => {
     }, { threshold: 0.5 }).observe(root);
   };
 
-  return { gapFor, radiusFor, shortest, frontmost, shuffle, start };
+  return { gapFor, radiusFor, shortest, frontmost, shuffle, centerOffset, start };
 })();
 
 if (typeof module !== "undefined") {

@@ -36,3 +36,15 @@ test("shuffle keeps every card", () => {
   assert.deepStrictEqual(W.shuffle(cards, () => 0.5).slice().sort(), cards);
   assert.deepStrictEqual(cards, ["a", "b", "c", "d"]);  // not changed in place
 });
+
+test("the wheel moves to the middle of the screen while it spins", () => {
+  const stage = { left: 100, top: 200, width: 400, height: 300 };
+  assert.deepStrictEqual(W.centerOffset(stage, { width: 1000, height: 1000 }, 0), { x: 200, y: 150 });
+});
+
+test("the centered wheel stays below the title and inside the screen", () => {
+  const stage = { left: 0, top: 100, width: 200, height: 300 };
+  assert.strictEqual(W.centerOffset(stage, { width: 200, height: 320 }, 90).y, -10);
+  assert.strictEqual(W.centerOffset(stage, { width: 200, height: 320 }, 150).y, 50);
+  assert.strictEqual(W.centerOffset({ ...stage, top: 10 }, { width: 200, height: 330 }, 40).y, 30);
+});

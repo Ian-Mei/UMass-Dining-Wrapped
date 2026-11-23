@@ -100,6 +100,13 @@ const Story = (() => {
       ...[...screen.querySelectorAll(TEXT)].filter((e) => e.getClientRects().length).map((e) => local(letters(e))),
       ...[...screen.querySelectorAll(BLOCKS)].filter((e) => e.getClientRects().length).map((e) => local(e.getBoundingClientRect())),
     ].filter((b) => b.right > b.left);
+    // The wheel spins in the middle and then slides over, so keep clear of where it ends up too.
+    const wheel = screen.querySelector(".wheelstage");
+    if (wheel && wheel.offsetParent) {
+      const left = wheel.offsetParent.offsetLeft + wheel.offsetLeft;
+      const top = wheel.offsetParent.offsetTop + wheel.offsetTop;
+      blocks.push({ left, top, right: left + wheel.offsetWidth, bottom: top + wheel.offsetHeight });
+    }
     const flipped = art.classList.contains("art-flip");
     for (const sprite of art.querySelectorAll(".sprite")) {
       sprite.classList.remove("art-off");

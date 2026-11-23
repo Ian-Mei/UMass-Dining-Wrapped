@@ -134,3 +134,17 @@ def test_short_laptops_put_the_personality_card_beside_the_wheel():
     assert "grid-template-columns" in block
     assert "#personality .wheelinfo" in block
     assert "overflow-y: auto" in block  # a very long blurb scrolls inside the card
+
+
+def test_wheel_spins_in_the_middle_then_slides_to_its_place():
+    css = story_css()
+    assert "#wheel.wheel-js:not(.landed) .wheelstage" in css
+    assert "translate(var(--wheel-x, 0), var(--wheel-y, 0))" in css
+    assert re.search(r"#wheel\.wheel-js\.landed \.wheelstage \{[^}]*transition: transform", css)
+    assert re.search(r"#wheel\.wheel-js\.landed \.wheelinfo \{[^}]*transition:", css)
+
+
+def test_reduced_motion_lands_the_wheel_without_sliding():
+    block = story_css().split("@media (prefers-reduced-motion: reduce)")[1]
+    assert "#wheel.wheel-js.landed .wheelstage, #wheel.wheel-js:not(.landed) .wheelstage" in block
+    assert "#wheel.wheel-js.landed .wheelinfo, #wheel.wheel-js:not(.landed) .wheelinfo" in block
