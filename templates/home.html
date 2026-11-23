@@ -101,10 +101,10 @@
                 </div>
                 <figure class="home-demo">
                   <picture>
-                    <source media="(max-width: 767px)" srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
+                    <source media="(max-width: 767px), (hover: none), (pointer: coarse)" srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
                     <source media="(prefers-reduced-motion: reduce)" srcset="{{ url_for('static', filename='styles/imgs/how-to-still.png') }}">
-                    <img src="{{ url_for('static', filename='styles/imgs/how-to.gif') }}" width="640" height="440" loading="lazy"
-                         alt="A cursor drags the Dining Wrapped button to the bookmarks bar, logs into GET, clicks the bookmark, and the Wrapped appears.">
+                    <img src="{{ url_for('static', filename='styles/imgs/how-to.gif') }}" width="640" height="440" draggable="false"
+                         alt="How it works: drag the Dining Wrapped button to your bookmarks bar, log into GET, then click the bookmark.">
                   </picture>
                 </figure>
               </div>
