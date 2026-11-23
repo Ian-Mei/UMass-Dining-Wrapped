@@ -2,7 +2,7 @@
 import re
 from pathlib import Path
 
-from tools.cut_sprites import anchor_style, origin_style
+from tools.cut_sprites import JOINED, anchor_style, grouped, origin_style
 
 from .conftest import charge, make_history_pdf, swipe
 from .test_accessibility import contrast
@@ -211,3 +211,15 @@ def test_share_card_shows_unique_places_visited(client):  # noqa: F811
 def test_share_card_says_place_for_just_one(client):  # noqa: F811
     html = upload(client, make_history_pdf([swipe("WorcDC2", "March 4, 2024, 12:00PM")])).get_data(as_text=True)
     assert "<b>1</b><span>place visited</span>" in html[html.index('class="poster"'):html.index("posterstamp")]
+
+
+def test_pieces_of_one_drawing_are_grouped_in_order():
+    assert grouped(5, [(1, 3)]) == [(0,), (1, 3), (2,), (4,)]
+    assert grouped(3, []) == [(0,), (1,), (2,)]
+
+
+def test_drawings_cut_by_the_frame_are_one_sprite_again():
+    assert sum(len(group) - 1 for groups in JOINED.values() for group in groups) == 16
+    assert len(list((ROOT / "static" / "styles" / "imgs" / "sprites").glob("*.png"))) == 29
+    markup = (ROOT / "templates" / "_sprites.html").read_text(encoding="utf8")
+    assert markup.count('<img class="sprite') == 29

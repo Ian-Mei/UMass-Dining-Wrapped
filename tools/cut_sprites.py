@@ -10,6 +10,16 @@ WIDTH, HEIGHT = 1920, 1080
 SCENES = {"maroon": 1, "plum": 2, "coral": 3, "periwinkle": 4, "teal": 5, "black": 7}
 BLOCK = 6        # shapes closer than about this many pixels count as one sprite
 MIN_PIXELS = 400
+# Pieces of one drawing that leaves the frame and comes back, or a squiggle and its bubbles. Numbers
+# are each scene's pieces in reading order. They stay exactly where they were drawn, as one sprite.
+JOINED = {
+    "maroon": [(2, 3, 4), (5, 7), (6, 9)],
+    "plum": [(0, 1), (2, 3)],
+    "coral": [(2, 3), (4, 7)],
+    "periwinkle": [(2, 4), (3, 5, 6)],
+    "teal": [(0, 1), (3, 4)],
+    "black": [(0, 1), (2, 3), (5, 6)],
+}
 
 
 def anchor_style(x, y, w, h):
@@ -38,6 +48,12 @@ def origin_style(x, y, w, h):
 
 def touches_corner(x, y, w, h):
     return (x == 0 or x + w == WIDTH) and (y == 0 or y + h == HEIGHT)
+
+
+def grouped(count, joined):
+    """Every piece's index once, as groups, ordered by each group's first piece."""
+    taken = {index: group for group in joined for index in group}
+    return [taken.get(index, (index,)) for index in range(count) if index == taken.get(index, (index,))[0]]
 
 
 def labelled_blocks(mask):
@@ -80,11 +96,10 @@ def cut_scene(scene, number, source, out):
     distance = np.abs(rgb - np.array(color, float)).max(axis=2)
     ys, xs, labels, count = labelled_blocks(distance > 10)
 
+    kept = [label for label in range(count) if (labels == label).sum() >= MIN_PIXELS]
     tags = []
-    for label in range(count):
-        chosen = labels == label
-        if chosen.sum() < MIN_PIXELS:
-            continue
+    for group in grouped(len(kept), JOINED.get(scene, ())):
+        chosen = np.isin(labels, [kept[index] for index in group])
         y0, y1, x0, x1 = ys[chosen].min(), ys[chosen].max() + 1, xs[chosen].min(), xs[chosen].max() + 1
         own = np.zeros((y1 - y0, x1 - x0), bool)
         own[ys[chosen] - y0, xs[chosen] - x0] = True
