@@ -154,7 +154,7 @@ def test_decorative_art_is_hidden_from_screen_readers(client):  # noqa: F811
         swipe("WorcDC2", "March 4, 2024, 12:00PM"),
         charge("Wasabi 1", "March 5, 2024, 12:00PM", 10.00),
     ])).get_data(as_text=True)
-    sprites = re.findall(r'<img class="sprite[^>]*>', page)
+    sprites = re.findall(r'<span class="sprite.*?(<img[^>]*>)', page, re.S)
     assert sprites
     for img in sprites:
         assert 'alt=""' in img, img

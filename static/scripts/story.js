@@ -115,14 +115,13 @@ const Story = (() => {
       const top = wheel.offsetParent.offsetTop + wheel.offsetTop;
       blocks.push({ left, top, right: left + wheel.offsetWidth, bottom: top + wheel.offsetHeight });
     }
-    const flipped = art.classList.contains("art-flip");
     for (const sprite of art.querySelectorAll(".sprite")) {
       sprite.classList.remove("art-off");
       sprite.style.removeProperty("--fit");
       if (!sprite.offsetWidth) continue;
       const fit = bestFit(FITS, (size) => {
         sprite.style.setProperty("--fit", size);
-        const left = flipped ? art.clientWidth - sprite.offsetLeft - sprite.offsetWidth : sprite.offsetLeft;
+        const left = sprite.offsetLeft;
         return clearOf({ left, right: left + sprite.offsetWidth, top: sprite.offsetTop, bottom: sprite.offsetTop + sprite.offsetHeight }, blocks, ART_GAP);
       });
       if (fit === null) sprite.classList.add("art-off");

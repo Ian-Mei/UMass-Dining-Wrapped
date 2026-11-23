@@ -2,7 +2,10 @@
 import re
 from pathlib import Path
 
-from tools.cut_sprites import JOINED, anchor_style, grouped, origin_style
+import pytest
+
+from tools.cut_sprites import JOINED, grouped
+from tools.screens import SCREENS, placement, text_color
 
 from .conftest import charge, make_history_pdf, swipe
 from .test_accessibility import contrast
@@ -23,31 +26,8 @@ def page(client):  # noqa: F811
     ])).get_data(as_text=True)
 
 
-def test_art_stays_on_the_edges_it_was_cut_by():
-    assert anchor_style(0, 0, 422, 403) == "--w:422;left:0;top:0"
-    assert anchor_style(1313, 0, 607, 474) == "--w:607;right:0;top:0"
-    assert anchor_style(0, 596, 583, 484) == "--w:583;left:0;bottom:0"
-    assert anchor_style(960, 540, 100, 100) == "--w:100;left:50.00%;top:50.00%"
-
-
 def test_no_screen_stretches_a_background_picture(client):  # noqa: F811
     assert 'class="background"' not in page(client)
-
-
-def test_every_screen_has_art_on_a_solid_color(client):  # noqa: F811
-    html = page(client)
-    for screen in re.findall(r"<section\b.*?</section>", html, re.S):
-        assert 'class="art' in screen, screen[:60]
-    for sprite in re.findall(r'<img class="sprite[^>]*>', html):
-        for needed in ('alt=""', 'loading="lazy"', "width=", "height="):
-            assert needed in sprite
-
-
-def test_every_color_keeps_its_text_readable():
-    pairs = re.findall(r"--scene:\s*(#[0-9a-f]{3,6});\s*--fg:\s*(#[0-9a-f]{3,6});", story_css())
-    assert len(pairs) == 6
-    for scene, fg in pairs:
-        assert contrast(fg, scene) >= 4.5, (fg, scene)
 
 
 def test_the_story_builds_to_the_share_card(client):  # noqa: F811
@@ -152,16 +132,6 @@ def test_reduced_motion_lands_the_wheel_without_sliding():
     assert "#wheel.wheel-js.landed .wheelinfo, #wheel.wheel-js:not(.landed) .wheelinfo" in block
 
 
-def test_art_grows_from_the_edges_it_was_cut_against():
-    assert origin_style(0, 0, 422, 403) == "--ox:0%;--oy:0%"
-    assert origin_style(1313, 0, 607, 474) == "--ox:100%;--oy:0%"
-    assert origin_style(0, 596, 583, 484) == "--ox:0%;--oy:100%"
-    assert origin_style(960, 540, 100, 100) == "--ox:50%;--oy:50%"
-    assert "--ox:" in (ROOT / "templates" / "_sprites.html").read_text(encoding="utf8")
-    assert "transform-origin: var(--ox, 50%) var(--oy, 50%)" in story_css()
-    assert '.sprite[style*=' not in story_css()
-
-
 def test_laundry_only_share_card_has_no_zero_day_streak(client):  # noqa: F811
     rows = [["Student Debit Plan", "10/07/26 01:41:00 PM", "X - OAK DRYER 10", "-$1.40", "$5.80"]]
     html = upload(client, make_history_pdf(rows)).get_data(as_text=True)
@@ -218,8 +188,78 @@ def test_pieces_of_one_drawing_are_grouped_in_order():
     assert grouped(3, []) == [(0,), (1,), (2,)]
 
 
+CORNER = {"L": True, "R": False, "T": True, "B": False}
+TOP_ONLY = {"L": False, "R": False, "T": True, "B": False}
+LEFT_ONLY = {"L": True, "R": False, "T": False, "B": False}
+WHOLE = {"L": False, "R": False, "T": False, "B": False}
+
+
+def test_art_can_move_to_any_edge_that_hides_its_cut_side():
+    assert placement(CORNER, ("TL",)) == ("left:0;top:0;--ox:0%;--oy:0%", 1, 1, "corner")
+    assert placement(CORNER, ("BR",)) == ("right:0;bottom:0;--ox:100%;--oy:100%", -1, -1, "corner")
+    assert placement(TOP_ONLY, ("B", 40)) == ("left:40%;bottom:0;--ox:50%;--oy:100%", 1, -1, "mid")
+    assert placement(LEFT_ONLY, ("R", 22)) == ("right:0;top:22%;--ox:100%;--oy:50%", -1, 1, "mid")
+    assert placement(WHOLE, ("F", 2, 68)) == ("left:2%;top:68%;--ox:50%;--oy:50%", 1, 1, "mid")
+
+
+@pytest.mark.parametrize("cuts, spec", [(TOP_ONLY, ("L", 20)), (LEFT_ONLY, ("T", 20)), (TOP_ONLY, ("TL",)), (CORNER, ("F", 1, 1))])
+def test_art_refuses_a_spot_that_would_show_its_cut_side(cuts, spec):
+    with pytest.raises(ValueError):
+        placement(cuts, spec)
+
+
+def test_every_screen_has_its_own_readable_color():
+    colors = [screen["color"] for screen in SCREENS.values()]
+    assert len(SCREENS) == 20
+    assert len(set(colors)) == 20
+    assert SCREENS["favIntro"]["color"] == "#6f2dff"
+    for color in colors:
+        assert contrast(text_color(color), color) >= 4.5, color
+
+
+def test_no_art_repeats_on_back_to_back_screens():
+    screens = list(SCREENS.values())
+    for before, after in zip(screens, screens[1:]):
+        assert not {piece[0] for piece in before["art"]} & {piece[0] for piece in after["art"]}
+
+
+def test_purple_scribbles_stay_off_dark_screens():
+    scribbles = {"maroon-01", "coral-01", "coral-05", "plum-02", "teal-01", "periwinkle-01"}
+    for name, screen in SCREENS.items():
+        if name != "home" and contrast(screen["color"], "#000000") < 6:  # home keeps its original art
+            assert not scribbles & {piece[0] for piece in screen["art"]}, name
+
+
+def test_chrome_stays_off_the_palest_screens():
+    chrome = {"black-00", "plum-00", "maroon-04", "teal-00", "periwinkle-03"}
+    for name in ("topups", "laundry"):
+        assert not chrome & {piece[0] for piece in SCREENS[name]["art"]}, name
+
+
+def test_screen_colors_are_generated_from_the_table():
+    css = (ROOT / "static" / "styles" / "screens.css").read_text(encoding="utf8")
+    for name, screen in SCREENS.items():
+        assert f"section#{name} {{ --scene: {screen['color']}; --fg: {text_color(screen['color'])}; }}" in css
+    assert "--scene: #" not in story_css()
+
+
+def test_every_screen_has_art_from_its_row_in_the_table(client):  # noqa: F811
+    html = page(client)
+    for screen in re.findall(r"<section\b.*?</section>", html, re.S):
+        assert '<div class="art" aria-hidden="true">' in screen, screen[:60]
+    for sprite in re.findall(r'<span class="sprite.*?</span>', html, re.S):
+        for needed in ('alt=""', 'loading="lazy"', "width=", "height="):
+            assert needed in sprite
+    home = html[html.index('<section id="home">'):html.index('id="favIntro"')]
+    assert home.count('class="sprite') == len(SCREENS["home"]["art"])
+
+
 def test_drawings_cut_by_the_frame_are_one_sprite_again():
     assert sum(len(group) - 1 for groups in JOINED.values() for group in groups) == 16
     assert len(list((ROOT / "static" / "styles" / "imgs" / "sprites").glob("*.png"))) == 29
-    markup = (ROOT / "templates" / "_sprites.html").read_text(encoding="utf8")
-    assert markup.count('<img class="sprite') == 29
+
+
+def test_a_screen_never_shows_the_green_flower_twice():
+    flowers = {"black-01", "maroon-05", "plum-01"}  # the same drawing, in three backgrounds
+    for name, screen in SCREENS.items():
+        assert len(flowers & {piece[0] for piece in screen["art"]}) <= 1, name

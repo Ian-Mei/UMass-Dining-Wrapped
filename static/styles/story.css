@@ -9,13 +9,7 @@
   --panel-line: #eadfd4;
 }
 
-/* One flat color per chapter, always the color its art was drawn on. */
-section#home, section#favIntro, section#calendar, section#places { --scene: #862632; --fg: #fff6e9; }
-section#routine, section#topups, section#plans, section#days { --scene: #722d65; --fg: #fff6e9; }
-section#favDC, section#top3vendors, section#funfacts { --scene: #ff5b49; --fg: #260b07; }
-section#bluewall, section#bluewallchart, section#laundry, section#tables { --scene: #afb1ff; --fg: #17183f; }
-section#harvest, section#clock, section#card { --scene: #16d0a6; --fg: #06241e; }
-section#personality, section#end { --scene: #000000; --fg: #fff6e9; }
+/* Each screen's --scene and --fg come from tools/screens.py, through screens.css. */
 section#home, section#favIntro, section#calendar, section#places,
 section#routine, section#topups, section#plans, section#days,
 section#favDC, section#top3vendors, section#funfacts,
@@ -32,7 +26,6 @@ section .container { position: relative; z-index: 1; width: 100%; }
 
 /* ---- The art ---- */
 .art { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.art-flip { transform: scaleX(-1); }
 .sprite {
   position: absolute;
   display: block;
@@ -41,6 +34,7 @@ section .container { position: relative; z-index: 1; width: 100%; }
   height: auto;
   transform-origin: var(--ox, 50%) var(--oy, 50%);
 }
+.sprite img { display: block; width: 100%; height: 100%; }
 
 /* story.js hides a piece that can't get clear of the text at this window size. */
 .sprite.art-off { display: none; }

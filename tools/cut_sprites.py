@@ -1,10 +1,12 @@
 """Cuts the flattened art in art/backgrounds/ into sprites for the results page.
 
-Run from the repo root after changing a background:  python -m tools.cut_sprites
-Writes static/styles/imgs/sprites/*.png and templates/_sprites.html.
+Run from the repo root after changing a background or tools/screens.py:  python -m tools.cut_sprites
+Writes static/styles/imgs/sprites/*.png, templates/_sprites.html and static/styles/screens.css.
 """
 from collections import Counter
 from pathlib import Path
+
+from tools.screens import SCREENS, placement, text_color
 
 WIDTH, HEIGHT = 1920, 1080
 SCENES = {"maroon": 1, "plum": 2, "coral": 3, "periwinkle": 4, "teal": 5, "black": 7}
@@ -20,34 +22,6 @@ JOINED = {
     "teal": [(0, 1), (3, 4)],
     "black": [(0, 1), (2, 3), (5, 6)],
 }
-
-
-def anchor_style(x, y, w, h):
-    """CSS that keeps a sprite on the window edges it was cut by, so a cut side never shows."""
-    if x == 0:
-        across = "left:0"
-    elif x + w == WIDTH:
-        across = "right:0"
-    else:
-        across = f"left:{x / WIDTH * 100:.2f}%"
-    if y == 0:
-        down = "top:0"
-    elif y + h == HEIGHT:
-        down = "bottom:0"
-    else:
-        down = f"top:{y / HEIGHT * 100:.2f}%"
-    return f"--w:{w};{across};{down}"
-
-
-def origin_style(x, y, w, h):
-    """Where a sprite grows from: the window edges it was cut against, so a cut side never shows."""
-    across = "0%" if x == 0 else "100%" if x + w == WIDTH else "50%"
-    down = "0%" if y == 0 else "100%" if y + h == HEIGHT else "50%"
-    return f"--ox:{across};--oy:{down}"
-
-
-def touches_corner(x, y, w, h):
-    return (x == 0 or x + w == WIDTH) and (y == 0 or y + h == HEIGHT)
 
 
 def grouped(count, joined):
@@ -84,7 +58,7 @@ def labelled_blocks(mask):
 
 
 def cut_scene(scene, number, source, out):
-    """Saves one background's sprites and returns their <img> tags."""
+    """Saves one background's sprites and returns {name: (width, height, cut sides)}."""
     import fitz
     import numpy as np
 
@@ -92,28 +66,37 @@ def cut_scene(scene, number, source, out):
     if pix.alpha:
         pix = fitz.Pixmap(pix, 0)
     rgb = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, 3).astype(float)
-    color = Counter(map(tuple, rgb[::7, ::7].reshape(-1, 3).astype(int))).most_common(1)[0][0]
-    distance = np.abs(rgb - np.array(color, float)).max(axis=2)
+    color = np.array(Counter(map(tuple, rgb[::7, ::7].reshape(-1, 3).astype(int))).most_common(1)[0][0], float)
+    distance = np.abs(rgb - color).max(axis=2)
     ys, xs, labels, count = labelled_blocks(distance > 10)
 
     kept = [label for label in range(count) if (labels == label).sum() >= MIN_PIXELS]
-    tags = []
-    for group in grouped(len(kept), JOINED.get(scene, ())):
-        chosen = np.isin(labels, [kept[index] for index in group])
+    sprites = {}
+    for index, group in enumerate(grouped(len(kept), JOINED.get(scene, ()))):
+        chosen = np.isin(labels, [kept[i] for i in group])
         y0, y1, x0, x1 = ys[chosen].min(), ys[chosen].max() + 1, xs[chosen].min(), xs[chosen].max() + 1
         own = np.zeros((y1 - y0, x1 - x0), bool)
         own[ys[chosen] - y0, xs[chosen] - x0] = True
         alpha = ((distance[y0:y1, x0:x1] - 8) / 26).clip(0, 1) * own
-        # PyMuPDF stores images with alpha premultiplied.
-        rgba = np.dstack([rgb[y0:y1, x0:x1] * alpha[..., None], alpha * 255]).round().astype(np.uint8)
-        name = f"{scene}-{len(tags):02d}.png"
+        a = alpha[..., None]
+        # PyMuPDF stores alpha premultiplied. Taking the old background back out of each soft pixel
+        # keeps the edges clean on a different color.
+        premultiplied = (rgb[y0:y1, x0:x1] - (1 - a) * color).clip(0, 255 * a)
+        rgba = np.dstack([premultiplied, alpha * 255]).round().astype(np.uint8)
+        name = f"{scene}-{index:02d}"
         w, h = int(x1 - x0), int(y1 - y0)
-        fitz.Pixmap(fitz.csRGB, w, h, rgba.tobytes(), True).save(out / name)
-        kind = "corner" if touches_corner(int(x0), int(y0), w, h) else "mid"
-        style = f"{anchor_style(int(x0), int(y0), w, h)};{origin_style(int(x0), int(y0), w, h)};--d:{len(tags)}"
-        src = "{{ url_for('static', filename='styles/imgs/sprites/" + name + "') }}"
-        tags.append(f'<img class="sprite {kind}" style="{style}" src="{src}" width="{w}" height="{h}" alt="" loading="lazy">')
-    return tags
+        fitz.Pixmap(fitz.csRGB, w, h, rgba.tobytes(), True).save(out / f"{name}.png")
+        sprites[name] = (w, h, {"L": bool(x0 == 0), "R": bool(x1 == WIDTH), "T": bool(y0 == 0), "B": bool(y1 == HEIGHT)})
+    return sprites
+
+
+def sprite_tag(name, size, spec, order):
+    w, h, cuts = size
+    css, flip_x, flip_y, kind = placement(cuts, spec)
+    flip = "" if (flip_x, flip_y) == (1, 1) else f' style="transform:scale({flip_x},{flip_y})"'
+    src = "{{ url_for('static', filename='styles/imgs/sprites/" + name + ".png') }}"
+    return (f'<span class="sprite {kind}" style="--w:{w};aspect-ratio:{w}/{h};{css};--d:{order}">'
+            f'<img src="{src}" width="{w}" height="{h}" alt="" loading="lazy"{flip}></span>')
 
 
 def main():
@@ -122,13 +105,20 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     for old in out.glob("*.png"):
         old.unlink()
-    lines = ["{# Generated by tools/cut_sprites.py. Change the art in art/backgrounds/ and run it again. #}",
-             '{% macro art(scene, flip=False) %}<div class="art{{ " art-flip" if flip }}" aria-hidden="true">']
-    for index, (scene, number) in enumerate(SCENES.items()):
-        lines.append(("{% if" if index == 0 else "{% elif") + f' scene == "{scene}" %}}')
-        lines.extend(cut_scene(scene, number, root / "art" / "backgrounds", out))
+    sizes = {}
+    for scene, number in SCENES.items():
+        sizes.update(cut_scene(scene, number, root / "art" / "backgrounds", out))
+
+    lines = ["{# Generated by tools/cut_sprites.py from tools/screens.py. Edit that table and run it again. #}",
+             '{% macro art(screen) %}<div class="art" aria-hidden="true">']
+    css = ["/* Generated by tools/cut_sprites.py from tools/screens.py. */"]
+    for index, (screen, row) in enumerate(SCREENS.items()):
+        lines.append(("{% if" if index == 0 else "{% elif") + f' screen == "{screen}" %}}')
+        lines.extend(sprite_tag(piece[0], sizes[piece[0]], piece[1:], order) for order, piece in enumerate(row["art"]))
+        css.append(f"section#{screen} {{ --scene: {row['color']}; --fg: {text_color(row['color'])}; }}")
     lines += ["{% endif %}", "</div>{% endmacro %}", ""]
     (root / "templates" / "_sprites.html").write_text("\n".join(lines), encoding="utf8", newline="\n")
+    (root / "static" / "styles" / "screens.css").write_text("\n".join(css) + "\n", encoding="utf8", newline="\n")
 
 
 if __name__ == "__main__":

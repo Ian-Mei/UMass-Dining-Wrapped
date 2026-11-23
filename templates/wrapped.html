@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&display=swap" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&display=swap"></noscript>
     <link href="{{ url_for('static', filename='styles/wrapped.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='styles/screens.css') }}" rel="stylesheet" />
     <link href="{{ url_for('static', filename='styles/story.css') }}" rel="stylesheet" />
     {% include "_goatcounter.html" %}
 </head>
@@ -18,7 +19,7 @@
         {# Places that Explore your places lists, so links only point at ones it has. #}
         {% set explorable = h.explorer.places|map(attribute="name")|list %}
         <section id="home">
-          {{ art("maroon") }}
+          {{ art("home") }}
           <div class="container reveal">
             <h1>Welcome to {{ w.semester_short }} UMass Dining Wrapped &#8595;</h1>
             {% if maybe_cut_off %}
@@ -32,14 +33,14 @@
         {% if w.favorite_hall %}
         {% set fav = swipes[w.favorite_hall] %}
         <section id="favIntro">
-          {{ art("maroon") }}
+          {{ art("favIntro") }}
           <div class="container">
             <h2>Out of all the Dining Halls<br> one had a special place in your heart</h2>
           </div>
         </section>
 
         <section id="favDC">
-          {{ art("coral") }}
+          {{ art("favDC") }}
           <div class="container">
             <div class="listbox statcard">
               <div class="listheader"><h1 class="title">{{ w.favorite_hall }}</h1></div>
@@ -65,7 +66,7 @@
 
         {% if h.routine %}
         <section id="routine" class="stat">
-          {{ art("plum") }}
+          {{ art("routine") }}
           <div class="container reveal">
             <h2 class="stat-intro">You're a creature of habit</h2>
             <div class="listbox statcard">
@@ -84,7 +85,7 @@
         {% if h.blue_wall %}
         {% set bw = h.blue_wall %}
         <section id="bluewall" class="stat bluewall">
-          {{ art("periwinkle") }}
+          {{ art("bluewall") }}
           <div class="container reveal">
             <h2 class="stat-intro">Your #1 at Blue Wall was&hellip;</h2>
             <div class="listbox statcard">
@@ -100,7 +101,7 @@
         </section>
 
         <section id="bluewallchart" class="stat bluewall deep">
-          {{ art("periwinkle", flip=True) }}
+          {{ art("bluewallchart") }}
           <div class="container reveal">
             <h2 class="stat-intro">Your Blue Wall chart</h2>
             <div class="listbox statcard">
@@ -123,7 +124,7 @@
 
         {% if h.harvest %}
         <section id="harvest" class="stat harvest">
-          {{ art("teal") }}
+          {{ art("harvest") }}
           <div class="container reveal">
             <h2 class="stat-intro">Not Blue Wall, but&hellip;</h2>
             <div class="listbox statcard">
@@ -142,7 +143,7 @@
         {% if h.top_ups %}
         {% set t = h.top_ups %}
         <section id="topups" class="stat">
-          {{ art("plum", flip=True) }}
+          {{ art("topups") }}
           <div class="container reveal">
             <h2 class="stat-intro">When a swipe wasn't enough</h2>
             <div class="listbox statcard">
@@ -167,7 +168,7 @@
 
         {% if not w.vendors.empty %}
         <section id="top3vendors" class="stat">
-          {{ art("coral", flip=True) }}
+          {{ art("top3vendors") }}
           <div class="container reveal">
             <h2 class="stat-intro">You used a lot of dining dollars, lets see where you spent them</h2>
             <div class="listbox statcard dramaticreveal">
@@ -189,7 +190,7 @@
         {% if h.clock %}
         {% set c = h.clock %}
         <section id="clock" class="stat">
-          {{ art("teal", flip=True) }}
+          {{ art("clock") }}
           <div class="container reveal">
             <h2 class="stat-intro">Your dining clock</h2>
             <div class="listbox statcard">
@@ -221,7 +222,7 @@
 
         {% if h.calendar.weeks %}
         <section id="calendar" class="stat">
-          {{ art("maroon", flip=True) }}
+          {{ art("calendar") }}
           <div class="container reveal">
             <h2 class="stat-intro">Your semester, day by day</h2>
             <div class="listbox statcard">
@@ -248,7 +249,7 @@
         {% if h.fun %}
         {% set f = h.fun %}
         <section id="funfacts" class="stat">
-          {{ art("coral") }}
+          {{ art("funfacts") }}
           <div class="container reveal">
             <h2 class="stat-intro">A few more things we noticed</h2>
             <div class="listbox statcard">
@@ -278,7 +279,7 @@
 
         {% if w.laundry %}
         <section id="laundry" class="stat">
-          {{ art("periwinkle", flip=True) }}
+          {{ art("laundry") }}
           <div class="container reveal">
             <h2 class="stat-intro">And some clean clothes along the way</h2>
             <div class="text-container">
@@ -317,7 +318,7 @@
 
         {% if h.plans %}
         <section id="plans" class="stat">
-          {{ art("plum") }}
+          {{ art("plans") }}
           <div class="container reveal">
             <h2 class="stat-intro">Will you make it to finals?</h2>
             <div class="listbox statcard">
@@ -352,7 +353,7 @@
         {% endif %}
 
         <section id="personality">
-          {{ art("black") }}
+          {{ art("personality") }}
           {# static/scripts/personality-wheel.js spins the wheel the first time this screen shows. #}
           <div class="container wheelscreen" id="wheel" data-owned="{{ w.personalities|map(attribute='name')|list|tojson|forceescape }}">
             <h1>UMass Dining Personalities</h1>
@@ -385,7 +386,7 @@
         </section>
 
         <section id = "card">
-          {{ art("teal") }}
+          {{ art("card") }}
           {% set top_stats = [[w.total_swipes|string, "swipes"], ["$%.0f"|format(w.total_spent), "dollars"]] %}
           {% if w.places_tried %}{% set top_stats = top_stats + [[w.places_tried|string, "place visited" if w.places_tried == 1 else "places visited"]] %}{% else %}{% set top_stats = top_stats + [[w.personalities|length|string, "personalities"]] %}{% endif %}
           {% set picture = url_for('static', filename='styles/imgs/personalities/' + w.personality.image + '.png') %}
@@ -411,7 +412,7 @@
 
         {% if h.raw_sections %}
         <section id="tables" class="stat">
-          {{ art("periwinkle") }}
+          {{ art("tables") }}
           <div class="container reveal">
             <h2 class="stat-intro">All your data</h2>
             <div class="listbox statcard">
@@ -444,7 +445,7 @@
 
         {% if h.explorer.purchases %}
         <section id="days" class="stat explore">
-          {{ art("plum", flip=True) }}
+          {{ art("days") }}
           <div class="container reveal">
             <h2 class="stat-intro">Explore your days</h2>
             <div class="listbox statcard" id="explore-days">
@@ -465,7 +466,7 @@
 
         {% if h.explorer.places %}
         <section id="places" class="stat explore places">
-          {{ art("maroon") }}
+          {{ art("places") }}
           <div class="container reveal">
             <h2 class="stat-intro">Explore your places</h2>
             <div class="listbox statcard" id="explore-places">
@@ -483,7 +484,7 @@
         {% endif %}
 
         <section id="end">
-          {{ art("black", flip=True) }}
+          {{ art("end") }}
           <div class="container reveal">
             <h1>Thanks for using my app! <br>Check out my socials and other things I've made on my <a href="https://ian-mei.github.io" target="_blank" rel="noopener">Website</a></h1>
             <p class="feedback">Something off, or an idea? <a href="{{ feedback_url }}" target="_blank" rel="noopener">Tell me in this form</a></p>
