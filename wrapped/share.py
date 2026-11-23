@@ -1,8 +1,9 @@
 """The stats on the two share cards. YCMP plans choose where a swipe goes, so they compare Blue Wall
 and Harvest; everyone else compares dining halls and meals."""
-from .stats import HALL_ORDER
+import re
 
-MEALS = (("Breakfast", "breakfast"), ("Lunch", "lunch"), ("Dinner", "dinner"), ("Late_Night", "late night"))
+from .highlights import HARVEST_MARKET
+from .stats import HALL_ORDER
 
 
 def _count(value):
@@ -39,7 +40,12 @@ def _hall_ranking(wrapped):
 
 def _meals(wrapped):
     halls = _halls_in(wrapped)
-    rows = [[str(_total(wrapped, halls, row)), label] for row, label in MEALS]
+    breakfast, lunch, late, grab = (_total(wrapped, halls, row) for row in ("Breakfast", "Lunch", "Late_Night", "GrabNGo"))
+    # Dinner is the rest, so a late swipe at a hall with no late night still counts somewhere.
+    dinner = _total(wrapped, halls) - breakfast - lunch - late - grab
+    rows = [[str(breakfast), "breakfast"], [str(lunch), "lunch"], [str(dinner), "dinner"], [str(late), "late night"]]
+    if grab:
+        rows.append([str(grab), "grab n go"])
     return {"title": "Meals", "kind": "tiles", "rows": rows if any(row[0] != "0" for row in rows) else []}
 
 
@@ -49,7 +55,7 @@ def _blue_wall(blue_wall):
 
 
 def _where_swipes_went(wrapped, blue_wall):
-    harvest = _total(wrapped, [c for c in wrapped.swipes.columns if "harvest" in str(c).lower()])
+    harvest = _total(wrapped, [c for c in wrapped.swipes.columns if re.search(HARVEST_MARKET, str(c), re.IGNORECASE)])
     halls = _total(wrapped, _halls_in(wrapped))
     rows = []
     if blue_wall:

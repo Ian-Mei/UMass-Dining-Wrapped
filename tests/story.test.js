@@ -111,3 +111,49 @@ test("a picked personality has to be one of theirs", () => {
   assert.strictEqual(C.findPersonality(people, "Greedy"), null);
   assert.strictEqual(C.findPersonality(undefined, "Avatar"), null);
 });
+
+test("a card image is stored under the style it was drawn for", async () => {
+  const finish = {};
+  const images = C.cardImages((style) => new Promise((resolve) => { finish[style] = () => resolve(new Blob([style])); }));
+  const trading = images.get("trading");
+  const receipt = images.get("receipt");
+  finish.receipt();
+  finish.trading();
+  assert.strictEqual(await (await trading).blob.text(), "trading");
+  assert.strictEqual(await (await receipt).blob.text(), "receipt");
+});
+
+test("an image from before a personality change isn't kept", async () => {
+  let drawn = 0;
+  const finish = [];
+  const images = C.cardImages(() => new Promise((resolve) => { const n = ++drawn; finish.push(() => resolve(new Blob([String(n)]))); }));
+  const old = images.get("trading");
+  images.clear();
+  const fresh = images.get("trading");
+  finish.forEach((done) => done());
+  await old;
+  assert.strictEqual(await (await fresh).blob.text(), "2");
+  assert.strictEqual(await images.get("trading"), await fresh);
+});
+
+test("a failed drawing can be tried again", async () => {
+  let tries = 0;
+  const images = C.cardImages(async () => { if (++tries === 1) throw new Error("no"); return new Blob(["ok"]); });
+  await assert.rejects(images.get("receipt"));
+  await new Promise((resolve) => setTimeout(resolve));
+  assert.strictEqual(await (await images.get("receipt")).blob.text(), "ok");
+});
+
+test("a screen taller than the window still counts as on screen", () => {
+  const { onScreen } = require("../static/scripts/story.js");
+  assert.strictEqual(onScreen(0.51, 360, 360), true);
+  assert.strictEqual(onScreen(0.6, 400, 800), true);
+  assert.strictEqual(onScreen(0.3, 240, 800), false);
+});
+
+test("behind the preview only Space on a button does anything", () => {
+  const { blockedBehindDialog } = require("../static/scripts/story.js");
+  assert.strictEqual(blockedBehindDialog("ArrowDown", true), true);
+  assert.strictEqual(blockedBehindDialog(" ", false), true);
+  assert.strictEqual(blockedBehindDialog(" ", true), false);
+});

@@ -252,7 +252,7 @@ const ShareCard = (() => {
       bar += width + 8;
       wide = !wide;
     }
-    p.text("THANKS FOR EATING WITH US", W / 2, footTop + 124, 32, { ...mono, align: "center" });
+    p.text(`UMASS DINING WRAPPED · ${data.semester.toUpperCase()}`, W / 2, footTop + 124, 32, { ...mono, align: "center" });
   };
 
   const draw = async (style, data) => {
@@ -271,6 +271,24 @@ const ShareCard = (() => {
     return new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("no image"))), "image/png"));
   };
 
+  // Drawn images by card style. Clearing means the personality changed, so nothing drawn before counts.
+  const cardImages = (render) => {
+    const made = new Map();
+    const get = (style) => {
+      if (!made.has(style)) {
+        const drawing = render(style).then((blob) => ({ blob, url: URL.createObjectURL(blob) }));
+        made.set(style, drawing);
+        drawing.catch(() => { if (made.get(style) === drawing) made.delete(style); });
+      }
+      return made.get(style);
+    };
+    const clear = () => {
+      made.forEach((drawing) => drawing.then(({ url }) => URL.revokeObjectURL(url), () => {}));
+      made.clear();
+    };
+    return { get, clear };
+  };
+
   const start = (root, data) => {
     const poster = root.querySelector(".poster");
     const switches = [...root.querySelectorAll(".cardswitch button")];
@@ -283,7 +301,7 @@ const ShareCard = (() => {
     const sheetButton = dialog.querySelector(".sharesheet");
     const closeButton = dialog.querySelector(".shareclose");
     const message = dialog.querySelector(".sharemessage");
-    const made = new Map();  // style -> {blob, url}
+    const images = cardImages((wanted) => draw(wanted, { ...data }));
     let style = "trading";
 
     const show = (next) => {
@@ -307,18 +325,19 @@ const ShareCard = (() => {
       poster.querySelector(".face.trading .hero img").alt = person.name;
       poster.querySelectorAll(".who").forEach((who) => { who.textContent = person.name; });
       pickers.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.name === name)));
-      made.forEach(({ url }) => URL.revokeObjectURL(url));
-      made.clear();
+      images.clear();
     };
     pickers.forEach((button) => button.addEventListener("click", () => choose(button.dataset.name)));
     document.addEventListener("personality-shown", (event) => choose(event.detail.name));
 
     const image = async () => {
-      if (!made.has(style)) {
-        const blob = await draw(style, { ...data, image: data.image });
-        made.set(style, { blob, url: URL.createObjectURL(blob) });
+      // They can flip the card or pick a personality while it draws. Finish on what's showing.
+      for (;;) {
+        const wanted = style;
+        const person = data.personality;
+        const card = await images.get(wanted);
+        if (wanted === style && person === data.personality) return card;
       }
-      return made.get(style);
     };
     const canCopy = Boolean(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem);
     copyButton.hidden = !canCopy;
@@ -387,7 +406,7 @@ const ShareCard = (() => {
     show("trading");
   };
 
-  return { fileName, nextStyle, findPersonality, fitSize, nameLines, sectionGap, usesShareSheet, start };
+  return { fileName, nextStyle, cardImages, findPersonality, fitSize, nameLines, sectionGap, usesShareSheet, start };
 })();
 
 if (typeof module !== "undefined") {

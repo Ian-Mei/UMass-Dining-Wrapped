@@ -299,6 +299,7 @@ html:not(.js) .personapick { display: none; }
 .cardswitch button[aria-pressed="true"] { background: var(--fg); color: var(--scene); }
 .js .cardswitch { display: inline-flex; }
 html:not(.js) .cardswitch { display: none; }
+html:not(.js) .sharebtn, html:not(.js) .story-nav { display: none; }
 
 /* The two cards are the front and back of one flipping card. */
 .poster {

@@ -109,7 +109,7 @@ def test_the_page_behind_the_preview_cant_scroll():
     assert "html:has(.sharedialog" not in css  # hiding the page's overflow makes it jump
     assert 'addEventListener("wheel", holdPage' in (root / "scripts" / "share-card.js").read_text(encoding="utf8")
     assert 'document.querySelector("dialog[open]")' in (root / "scripts" / "story.js").read_text(encoding="utf8")
-    assert "if (step && event.key !== \" \") event.preventDefault();" in (root / "scripts" / "story.js").read_text(encoding="utf8")
+    assert "if (blockedBehindDialog(event.key," in (root / "scripts" / "story.js").read_text(encoding="utf8")
 
 
 def test_card_frames_are_measured_inside_the_card():
@@ -162,3 +162,36 @@ def test_browsing_the_wheel_carries_over_to_the_share_card():
 def test_receipt_drawing_has_a_border():
     css = (Path(__file__).parent.parent / "static" / "styles" / "story.css").read_text(encoding="utf8")
     assert re.search(r"\.receipt \.hero img \{[^}]*border: \.6cqw solid #1c1c1c", css)
+
+
+def test_meals_add_up_to_the_dining_hall_swipes():
+    swipes = table(
+        Worcester=[0, 1, 5, 0, 10, 16],  # Grab 'n Go gets its own tile
+        Hamp=[0, 0, 1, None, None, 3],   # two swipes after 9pm at a hall with no late night
+    )
+    rows = section(share_card(person(swipes=swipes)), "Meals")["rows"]
+    assert rows == [["0", "breakfast"], ["1", "lunch"], ["8", "dinner"], ["0", "late night"], ["10", "grab n go"]]
+    assert sum(int(value) for value, _ in rows) == 19
+
+
+def test_only_grab_n_go_still_shows_meals():
+    swipes = table(Worcester=[0, 0, 0, 0, 4, 4])
+    assert ["4", "grab n go"] in section(share_card(person(swipes=swipes)), "Meals")["rows"]
+
+
+def test_harvest_means_harvest_market():
+    swipes = table(**{"Harvest Market": [0, 3, 2, None, None, 5], "Harvest Cafe": [0, 1, 1, None, None, 2]})
+    assert ["5", "Harvest"] in section(share_card(person("YCMP", BLUE_WALL, swipes=swipes)), "Where the swipes went")["rows"]
+
+
+def test_controls_that_need_javascript_hide_without_it():
+    css = (Path(__file__).parent.parent / "static" / "styles" / "story.css").read_text(encoding="utf8")
+    assert "html:not(.js) .sharebtn, html:not(.js) .story-nav { display: none; }" in css
+
+
+def test_receipt_ends_with_the_stamp():
+    root = Path(__file__).parent.parent
+    template = (root / "templates" / "_share_cards.html").read_text(encoding="utf8")
+    script = (root / "static" / "scripts" / "share-card.js").read_text(encoding="utf8")
+    assert "THANKS FOR EATING" not in template + script
+    assert 'class="foot">UMASS DINING WRAPPED &middot; {{ semester|upper }}' in template

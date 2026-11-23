@@ -19,6 +19,10 @@ const Story = (() => {
     return FORWARD.includes(key) ? 1 : BACK.includes(key) ? -1 : 0;
   };
   const canScroll = (box) => box.scrollHeight > box.clientHeight || box.scrollWidth > box.clientWidth;
+  // Most of the screen is showing, or it fills most of the window (for one taller than the window).
+  const onScreen = (ratio, visible, windowHeight) => ratio >= 0.55 || visible >= windowHeight * 0.55;
+  // The page stays put behind the preview. Space still presses its buttons.
+  const blockedBehindDialog = (key, onButton) => key !== " " || !onButton;
   const targetIndex = (current, step, count) => Math.min(count - 1, Math.max(0, current + step));
 
   // Holds each screen's color, then eases to the next one as you scroll between them.
@@ -155,13 +159,13 @@ const Story = (() => {
 
     const seen = new IntersectionObserver((entries) => {
       for (const entry of entries) {
-        if (entry.isIntersecting) {
+        if (entry.isIntersecting && onScreen(entry.intersectionRatio, entry.intersectionRect.height, window.innerHeight)) {
           entry.target.classList.add("in");
           current = screens.indexOf(entry.target);
           update();
         }
       }
-    }, { threshold: 0.55 });
+    }, { threshold: Array.from({ length: 21 }, (_, i) => i / 20) });
 
     const prev = document.querySelector(".story-prev");
     const next = document.querySelector(".story-next");
@@ -200,8 +204,7 @@ const Story = (() => {
       if (!step) return;
       const target = event.target;
       if (document.querySelector("dialog[open]")) {
-        // The page stays put behind the preview. Space still presses its buttons.
-        if (step && event.key !== " ") event.preventDefault();
+        if (blockedBehindDialog(event.key, Boolean(target.closest("a, button")))) event.preventDefault();
         return;
       }
       if (target.closest("input, select, textarea")) return;
@@ -218,7 +221,7 @@ const Story = (() => {
     });
   };
 
-  return { keyStep, canScroll, targetIndex, backdropColor, screenOffset, clearOf, bestFit, start };
+  return { keyStep, canScroll, onScreen, blockedBehindDialog, targetIndex, backdropColor, screenOffset, clearOf, bestFit, start };
 })();
 
 if (typeof module !== "undefined") {
