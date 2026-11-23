@@ -39,15 +39,8 @@ section .container { position: relative; z-index: 1; width: 100%; }
   width: calc(var(--w) / 1920 * var(--art-unit) * var(--art-scale) * var(--fit, 1));
   max-width: none;
   height: auto;
+  transform-origin: var(--ox, 50%) var(--oy, 50%);
 }
-.sprite[style*="left:0"] { transform-origin: left; }
-.sprite[style*="right:0"] { transform-origin: right; }
-.sprite[style*="top:0"] { transform-origin: top; }
-.sprite[style*="bottom:0"] { transform-origin: bottom; }
-.sprite[style*="left:0"][style*="top:0"] { transform-origin: 0 0; }
-.sprite[style*="right:0"][style*="top:0"] { transform-origin: 100% 0; }
-.sprite[style*="left:0"][style*="bottom:0"] { transform-origin: 0 100%; }
-.sprite[style*="right:0"][style*="bottom:0"] { transform-origin: 100% 100%; }
 
 /* story.js hides a piece that can't get clear of the text at this window size. */
 .sprite.art-off { display: none; }
@@ -205,7 +198,7 @@ section#calendar .big { font-size: min(13vw, calc(25 * var(--vh))); }
 .statcard .planmeta, .statcard .barrow b { color: var(--panel-ink); }
 .statcard .planverdict.ok { color: #0b6b52; }
 .statcard .planverdict.out { color: #b3262e; }
-.statcard .bar { background: var(--scene); }
+.statcard .barrow .bar { background: #5a5ed6; }
 .statcard .tile { background: #f6ecdd; }
 .cell, .xcell { background-color: #f1e7dc; }
 .xcell.busiest { background: #ff5b49; color: #260b07; }

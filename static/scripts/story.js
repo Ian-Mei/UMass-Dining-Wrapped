@@ -3,9 +3,9 @@ const Story = (() => {
   const FORWARD = ["ArrowRight", "ArrowDown", "PageDown", " "];
   const BACK = ["ArrowLeft", "ArrowUp", "PageUp"];
   // Clicking these does their own thing instead of moving to the next screen.
-  const INTERACTIVE = "a, button, input, select, textarea, label, .wheelstage, .rawdata, .xmonth, .xday-list, .xvisit-list, .xchips, .heatmap, .story-nav";
+  const INTERACTIVE = "a, button, input, select, textarea, label, .wheelstage, .wheelinfo, .rawdata, .xmonth, .xday-list, .xvisit-list, .xchips, .heatmap, .story-nav";
   // Up and down scroll these lists when the keyboard is inside them.
-  const SCROLLS_ITSELF = ".rawdata, .xday-list, .xvisit-list, .xchips";
+  const SCROLLS_ITSELF = ".wheelinfo, .rawdata, .xday-list, .xvisit-list, .xchips";
   const CLONE_COLORS = ["#afb1ff", "#16d0a6", "#ffe24a", "#fff6e9"];
   // What the art has to stay clear of. Text is measured by its letters, the rest by its box.
   const TEXT = "h1, h2, .big, .caption, .headline, .remark, .notice, .feedback, .stamp, .itemname, .itemvalue";
@@ -13,7 +13,12 @@ const Story = (() => {
   const FITS = [1, 0.8, 0.62, 0.45];
   const ART_GAP = 10;
 
-  const keyStep = (key) => (FORWARD.includes(key) ? 1 : BACK.includes(key) ? -1 : 0);
+  const keyStep = (key, shift = false) => {
+    if (key === " ") return shift ? -1 : 1;
+    if (shift) return 0;  // shift+arrows extend a text selection
+    return FORWARD.includes(key) ? 1 : BACK.includes(key) ? -1 : 0;
+  };
+  const canScroll = (box) => box.scrollHeight > box.clientHeight || box.scrollWidth > box.clientWidth;
   const targetIndex = (current, step, count) => Math.min(count - 1, Math.max(0, current + step));
 
   // Holds each screen's color, then eases to the next one as you scroll between them.
@@ -70,6 +75,7 @@ const Story = (() => {
     window.addEventListener("resize", measure);
     window.addEventListener("load", measure);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+    if (document.fonts) document.fonts.addEventListener("loadingdone", measure);
     tops = screens.map((screen) => screen.offsetTop);
     draw();
   };
@@ -90,12 +96,14 @@ const Story = (() => {
   };
 
   // Keeps each piece of art off the text at this window size: shrink toward its edge, or hide it.
-  // Uses layout positions, which the entrance animation's transforms don't affect.
+  // Measures where things will settle, without the entrance animation's movement.
   const placeArt = (screen) => {
     const art = screen.querySelector(":scope > .art");
     if (!art) return;
     const frame = screen.getBoundingClientRect();
-    const local = (r) => ({ left: r.left - frame.left, right: r.right - frame.left, top: r.top - frame.top, bottom: r.bottom - frame.top });
+    const content = screen.querySelector(":scope > .container, :scope > .shareline");
+    const drift = content ? new DOMMatrixReadOnly(getComputedStyle(content).transform).m42 : 0;
+    const local = (r) => ({ left: r.left - frame.left, right: r.right - frame.left, top: r.top - frame.top - drift, bottom: r.bottom - frame.top - drift });
     const blocks = [
       ...[...screen.querySelectorAll(TEXT)].filter((e) => e.getClientRects().length).map((e) => local(letters(e))),
       ...[...screen.querySelectorAll(BLOCKS)].filter((e) => e.getClientRects().length).map((e) => local(e.getBoundingClientRect())),
@@ -168,10 +176,15 @@ const Story = (() => {
       update();
     };
 
+    // Screens only wait for their animation once this script is running, so a failed load
+    // can't leave the page blank.
+    document.documentElement.classList.add("js");
     screens.forEach((screen) => seen.observe(screen));
     const placeAll = () => screens.forEach(placeArt);
     placeAll();
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeAll);
+    // The font loads without blocking the page, so it can arrive after everything above.
+    if (document.fonts) document.fonts.addEventListener("loadingdone", placeAll);
     window.addEventListener("load", placeAll);
     let resizing;
     window.addEventListener("resize", () => {
@@ -184,12 +197,13 @@ const Story = (() => {
 
     document.addEventListener("keydown", (event) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
-      const step = keyStep(event.key);
+      const step = keyStep(event.key, event.shiftKey);
       if (!step) return;
       const target = event.target;
       if (target.closest("input, select, textarea")) return;
       if (event.key === " " && target.closest("a, button")) return;
-      if (target.closest(SCROLLS_ITSELF)) return;
+      const scroller = target.closest(SCROLLS_ITSELF);
+      if (scroller && canScroll(scroller)) return;
       event.preventDefault();
       go(step);
     });
@@ -200,7 +214,7 @@ const Story = (() => {
     });
   };
 
-  return { keyStep, targetIndex, backdropColor, screenOffset, clearOf, bestFit, start };
+  return { keyStep, canScroll, targetIndex, backdropColor, screenOffset, clearOf, bestFit, start };
 })();
 
 if (typeof module !== "undefined") {

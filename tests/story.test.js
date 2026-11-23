@@ -69,3 +69,15 @@ test("a screen's offset runs from -1 before it arrives to 1 after it's passed", 
   assert.strictEqual(S.screenOffset(900, 100, 100), 1);
   assert.strictEqual(S.screenOffset(-900, 100, 100), -1);
 });
+
+test("shift+space goes back, and other shift+keys stay with the browser", () => {
+  assert.strictEqual(S.keyStep(" ", true), -1);
+  assert.strictEqual(S.keyStep("ArrowDown", true), 0);
+  assert.strictEqual(S.keyStep("ArrowLeft", true), 0);
+});
+
+test("the keys only stay in a box that really has more to scroll", () => {
+  assert.strictEqual(S.canScroll({ scrollHeight: 200, clientHeight: 100, scrollWidth: 50, clientWidth: 50 }), true);
+  assert.strictEqual(S.canScroll({ scrollHeight: 100, clientHeight: 100, scrollWidth: 90, clientWidth: 50 }), true);
+  assert.strictEqual(S.canScroll({ scrollHeight: 100, clientHeight: 100, scrollWidth: 50, clientWidth: 50 }), false);
+});

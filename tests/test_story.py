@@ -2,7 +2,7 @@
 import re
 from pathlib import Path
 
-from tools.cut_sprites import anchor_style
+from tools.cut_sprites import anchor_style, origin_style
 
 from .conftest import charge, make_history_pdf, swipe
 from .test_accessibility import contrast
@@ -65,7 +65,9 @@ def test_share_card_has_a_real_share_button(client):  # noqa: F811
 
 def test_screens_only_wait_for_animation_when_javascript_runs(client):  # noqa: F811
     html = page(client)
-    assert 'document.documentElement.classList.add("js")' in html[:html.index("</head>")]
+    assert 'classList.add("js")' not in html  # if story.js fails to load, nothing stays hidden
+    script = (ROOT / "static" / "scripts" / "story.js").read_text(encoding="utf8")
+    assert 'document.documentElement.classList.add("js")' in script
     assert ".js section:not(.in) .container" in story_css()
 
 
@@ -148,3 +150,48 @@ def test_reduced_motion_lands_the_wheel_without_sliding():
     block = story_css().split("@media (prefers-reduced-motion: reduce)")[1]
     assert "#wheel.wheel-js.landed .wheelstage, #wheel.wheel-js:not(.landed) .wheelstage" in block
     assert "#wheel.wheel-js.landed .wheelinfo, #wheel.wheel-js:not(.landed) .wheelinfo" in block
+
+
+def test_art_grows_from_the_edges_it_was_cut_against():
+    assert origin_style(0, 0, 422, 403) == "--ox:0%;--oy:0%"
+    assert origin_style(1313, 0, 607, 474) == "--ox:100%;--oy:0%"
+    assert origin_style(0, 596, 583, 484) == "--ox:0%;--oy:100%"
+    assert origin_style(960, 540, 100, 100) == "--ox:50%;--oy:50%"
+    assert "--ox:" in (ROOT / "templates" / "_sprites.html").read_text(encoding="utf8")
+    assert "transform-origin: var(--ox, 50%) var(--oy, 50%)" in story_css()
+    assert '.sprite[style*=' not in story_css()
+
+
+def test_laundry_only_share_card_has_no_zero_day_streak(client):  # noqa: F811
+    rows = [["Student Debit Plan", "10/07/26 01:41:00 PM", "X - OAK DRYER 10", "-$1.40", "$5.80"]]
+    html = upload(client, make_history_pdf(rows)).get_data(as_text=True)
+    poster = html[html.index('class="poster"'):html.index("posterstamp")]
+    assert "day streak" not in poster
+    assert "personalities" in poster
+
+
+def test_art_is_placed_again_when_the_real_font_arrives():
+    script = (ROOT / "static" / "scripts" / "story.js").read_text(encoding="utf8")
+    assert '"loadingdone"' in script
+
+
+def test_art_placement_ignores_the_entrance_animation():
+    script = (ROOT / "static" / "scripts" / "story.js").read_text(encoding="utf8")
+    assert "DOMMatrixReadOnly" in script
+
+
+def test_share_image_keeps_the_condensed_type():
+    script = (ROOT / "static" / "scripts" / "share-card.js").read_text(encoding="utf8")
+    assert script.count("ctx.font =") == 1  # one helper, which sets the stretch right after
+    assert 'ctx.fontStretch = "condensed"' in script
+
+
+def test_laundry_intro_matches_the_other_screens(client):  # noqa: F811
+    rows = [["Student Debit Plan", "10/07/26 01:41:00 PM", "X - OAK DRYER 10", "-$1.40", "$5.80"]]
+    assert '<section id="laundry" class="stat">' in upload(client, make_history_pdf(rows)).get_data(as_text=True)
+
+
+def test_blue_wall_bars_use_a_visible_periwinkle():
+    bar = re.search(r"\.statcard \.barrow \.bar \{([^}]*)\}", story_css()).group(1)
+    color = re.search(r"background:\s*(#[0-9a-f]{6})", bar).group(1)
+    assert contrast(color, "#fff6e9") >= 3

@@ -38,10 +38,16 @@ const ShareCard = (() => {
     canvas.width = W;
     canvas.height = H;
     const ctx = canvas.getContext("2d");
-    const font = (size, weight = 900) => `${weight} ${size}px Archivo, Impact, sans-serif`;
+    const setFont = (size, weight = 900) => {
+      ctx.font = `${weight} ${size}px Archivo, Impact, sans-serif`;
+      if ("fontStretch" in ctx) ctx.fontStretch = "condensed";
+    };
+    const widthAt = (weight) => (text, size) => {
+      setFont(size, weight);
+      return ctx.measureText(text).width;
+    };
     const fitted = (text, max, width, y, weight = 900) => {
-      const size = fitSize((t, s) => { ctx.font = font(s, weight); return ctx.measureText(t).width; }, text, max, width);
-      ctx.font = font(size, weight);
+      setFont(fitSize(widthAt(weight), text, max, width), weight);
       ctx.fillText(text, W / 2, y);
     };
 
@@ -49,7 +55,6 @@ const ShareCard = (() => {
     ctx.fillRect(0, 0, W, H);
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
-    if ("fontStretch" in ctx) ctx.fontStretch = "condensed";
     ctx.fillStyle = INK;
     fitted(data.owner.toUpperCase(), 54, 920, 130, 800);
 
@@ -68,9 +73,9 @@ const ShareCard = (() => {
     const stats = JSON.parse(data.stats);
     stats.forEach((stat, i) => {
       const x = 70 + (940 / stats.length) * (i + 0.5);
-      ctx.font = font(fitSize((t, s) => { ctx.font = font(s); return ctx.measureText(t).width; }, stat[0], 96, 940 / stats.length - 30));
+      setFont(fitSize(widthAt(900), stat[0], 96, 940 / stats.length - 30));
       ctx.fillText(stat[0], x, 1490);
-      ctx.font = font(32, 700);
+      setFont(32, 700);
       ctx.fillText(stat[1], x, 1560);
     });
 

@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UMass Dining Wrapped</title>
     <link rel="icon" href="{{ url_for('static', filename='styles/imgs/UMassDiningWrapped.jpg') }}">
-    <script>document.documentElement.classList.add("js");</script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&display=swap" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&display=swap"></noscript>
     <link href="{{ url_for('static', filename='styles/wrapped.css') }}" rel="stylesheet" />
@@ -278,7 +277,7 @@
         {% endif %}
 
         {% if w.laundry %}
-        <section id="laundry">
+        <section id="laundry" class="stat">
           {{ art("periwinkle", flip=True) }}
           <div class="container reveal">
             <h2 class="stat-intro">And some clean clothes along the way</h2>
@@ -388,7 +387,7 @@
         <section id = "card">
           {{ art("teal") }}
           {% set top_stats = [[w.total_swipes|string, "swipes"], ["$%.0f"|format(w.total_spent), "dollars"]] %}
-          {% if h.streak %}{% set top_stats = top_stats + [[h.streak.days|string, "day streak"]] %}{% else %}{% set top_stats = top_stats + [[w.personalities|length|string, "personalities"]] %}{% endif %}
+          {% if h.streak.days %}{% set top_stats = top_stats + [[h.streak.days|string, "day streak"]] %}{% else %}{% set top_stats = top_stats + [[w.personalities|length|string, "personalities"]] %}{% endif %}
           {% set picture = url_for('static', filename='styles/imgs/personalities/' + w.personality.image + '.png') %}
           <div class="shareline">
             <div class="pitch">

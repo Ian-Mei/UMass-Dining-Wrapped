@@ -29,6 +29,13 @@ def anchor_style(x, y, w, h):
     return f"--w:{w};{across};{down}"
 
 
+def origin_style(x, y, w, h):
+    """Where a sprite grows from: the window edges it was cut against, so a cut side never shows."""
+    across = "0%" if x == 0 else "100%" if x + w == WIDTH else "50%"
+    down = "0%" if y == 0 else "100%" if y + h == HEIGHT else "50%"
+    return f"--ox:{across};--oy:{down}"
+
+
 def touches_corner(x, y, w, h):
     return (x == 0 or x + w == WIDTH) and (y == 0 or y + h == HEIGHT)
 
@@ -88,7 +95,7 @@ def cut_scene(scene, number, source, out):
         w, h = int(x1 - x0), int(y1 - y0)
         fitz.Pixmap(fitz.csRGB, w, h, rgba.tobytes(), True).save(out / name)
         kind = "corner" if touches_corner(int(x0), int(y0), w, h) else "mid"
-        style = f"{anchor_style(int(x0), int(y0), w, h)};--d:{len(tags)}"
+        style = f"{anchor_style(int(x0), int(y0), w, h)};{origin_style(int(x0), int(y0), w, h)};--d:{len(tags)}"
         src = "{{ url_for('static', filename='styles/imgs/sprites/" + name + "') }}"
         tags.append(f'<img class="sprite {kind}" style="{style}" src="{src}" width="{w}" height="{h}" alt="" loading="lazy">')
     return tags
