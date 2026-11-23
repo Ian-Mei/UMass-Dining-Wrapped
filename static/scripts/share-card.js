@@ -44,6 +44,8 @@ const ShareCard = (() => {
     return [words.slice(0, best).join(" "), words.slice(best).join(" ")];
   };
 
+  const findPersonality = (people, name) => (people || []).find((person) => person.name === name) || null;
+
   const loadImage = (src) => new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
@@ -206,7 +208,9 @@ const ShareCard = (() => {
     const meta = [data.semester.toUpperCase(), data.guest ? `GUEST: ${data.guest.toUpperCase()}` : "", data.plan ? data.plan.toUpperCase() : ""].filter(Boolean).join(" · ");
     p.text(meta, W / 2, 244, 34, { ...mono, align: "center", fit: inner });
     dashed(274);
-    p.picture(image, left, 288, 186, 250);
+    p.box(left, 286, 190, 256, 16, INK);
+    p.box(left + 7, 293, 176, 242, 10, "#ffffff");
+    p.picture(image, left + 11, 297, 168, 234);
     p.text("YOU ORDERED:", left + 212, 390, 36, mono);
     const room = right - (left + 212);
     const lines = nameLines(data.personality.toUpperCase(), p.widthAt(700, MONO), 66, room, 54);
@@ -292,6 +296,23 @@ const ShareCard = (() => {
     switches.forEach((button) => button.addEventListener("click", () => show(button.dataset.choice)));
     poster.addEventListener("click", () => show(nextStyle(style)));
 
+    // Changes the drawing and name on both cards. The stats stay the same.
+    const pickers = [...root.querySelectorAll(".personapick button")];
+    const choose = (name) => {
+      const person = findPersonality(data.personalities, name);
+      if (!person || person.name === data.personality) return;
+      data.personality = person.name;
+      data.image = person.image;
+      poster.querySelectorAll(".hero img").forEach((img) => { img.src = person.image; });
+      poster.querySelector(".face.trading .hero img").alt = person.name;
+      poster.querySelectorAll(".who").forEach((who) => { who.textContent = person.name; });
+      pickers.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.name === name)));
+      made.forEach(({ url }) => URL.revokeObjectURL(url));
+      made.clear();
+    };
+    pickers.forEach((button) => button.addEventListener("click", () => choose(button.dataset.name)));
+    document.addEventListener("personality-shown", (event) => choose(event.detail.name));
+
     const image = async () => {
       if (!made.has(style)) {
         const blob = await draw(style, { ...data, image: data.image });
@@ -366,7 +387,7 @@ const ShareCard = (() => {
     show("trading");
   };
 
-  return { fileName, nextStyle, fitSize, nameLines, sectionGap, usesShareSheet, start };
+  return { fileName, nextStyle, findPersonality, fitSize, nameLines, sectionGap, usesShareSheet, start };
 })();
 
 if (typeof module !== "undefined") {

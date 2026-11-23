@@ -1,10 +1,13 @@
 """What the two share cards show, by meal plan."""
+import json
 import re
 from pathlib import Path
 from types import SimpleNamespace as Row
 
 import pandas as pd
 
+import app as app_module
+from wrapped.personality import CONNOISSEUR, FRANK_FANATIC, HAMP_HEAD
 from wrapped.share import share_card
 
 from .conftest import charge, make_history_pdf, swipe
@@ -123,3 +126,39 @@ def test_the_cards_and_preview_keep_their_own_look():
     assert re.search(r"\.face\.receipt, \.face\.receipt \* \{[^}]*Space Mono", css)  # wrapped.css sets a font on *
     assert re.search(r"\.sharedialog \{[^}]*margin: auto", css)                       # and removes every margin
     assert re.search(r"\.face \{[^}]*border: 3px solid", css)                         # visible on the same color
+
+
+def page_with(people):
+    result, _ = app_module.build_from_pdfs([make_history_pdf([swipe("WorcDC2", "March 4, 2024, 12:00PM")])])
+    result.personalities = people
+    result.reasons = {}
+    with app_module.app.test_request_context():
+        return app_module.render_wrapped(result)
+
+
+def test_share_screen_lets_them_pick_any_of_their_personalities():
+    html = page_with([FRANK_FANATIC, CONNOISSEUR, HAMP_HEAD])
+    picker = html[html.index('class="personapick"'):html.index('class="cardswitch"')]
+    assert picker.count("<button") == 3
+    assert '<button type="button" data-name="Frank Fanatic" aria-pressed="true">' in picker
+    assert '<button type="button" data-name="Connoisseur" aria-pressed="false">' in picker
+    data = json.loads(re.search(r'id="share-data" type="application/json">(.*?)</script>', html, re.S).group(1))
+    assert data["personality"] == "Frank Fanatic"
+    assert [p["name"] for p in data["personalities"]] == ["Frank Fanatic", "Connoisseur", "Hamp Head"]
+    assert data["personalities"][1]["image"].endswith("personalities/connoisseur.png")
+
+
+def test_one_personality_has_no_picker():
+    assert 'class="personapick"' not in page_with([FRANK_FANATIC])
+
+
+def test_browsing_the_wheel_carries_over_to_the_share_card():
+    scripts = Path(__file__).parent.parent / "static" / "scripts"
+    wheel = (scripts / "personality-wheel.js").read_text(encoding="utf8")
+    assert 'if (browsing) root.dispatchEvent(new CustomEvent("personality-shown"' in wheel
+    assert '"personality-shown"' in (scripts / "share-card.js").read_text(encoding="utf8")
+
+
+def test_receipt_drawing_has_a_border():
+    css = (Path(__file__).parent.parent / "static" / "styles" / "story.css").read_text(encoding="utf8")
+    assert re.search(r"\.receipt \.hero img \{[^}]*border: \.6cqw solid #1c1c1c", css)

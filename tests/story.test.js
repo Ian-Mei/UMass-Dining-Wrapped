@@ -104,3 +104,10 @@ test("a personality name stays on one line when it fits", () => {
   assert.deepStrictEqual(C.nameLines("WORCESTER WARRIOR", measure, 60, 300, 50), ["WORCESTER", "WARRIOR"]);
   assert.deepStrictEqual(C.nameLines("CONNOISSEUR", measure, 60, 100, 50), ["CONNOISSEUR"]);
 });
+
+test("a picked personality has to be one of theirs", () => {
+  const people = [{ name: "Avatar", image: "a.png" }, { name: "Vampire", image: "v.png" }];
+  assert.strictEqual(C.findPersonality(people, "Vampire").image, "v.png");
+  assert.strictEqual(C.findPersonality(people, "Greedy"), null);
+  assert.strictEqual(C.findPersonality(undefined, "Avatar"), null);
+});

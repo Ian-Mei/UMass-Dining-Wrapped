@@ -290,6 +290,10 @@ section#personality .wheelscreen h1 { color: var(--fg); }
 .sharebtn:active { transform: scale(.96); }
 .sharebtn:disabled { cursor: wait; opacity: .7; }
 .sharestatus { display: block; min-height: 1.3em; margin-top: 8px; font-size: 13px; font-weight: 700; }
+.personapick { display: flex; flex-wrap: wrap; gap: 6px; max-height: calc(15 * var(--vh)); margin-bottom: 12px; padding: 2px; overflow-y: auto; }
+.personapick button { flex: none; min-height: 34px; padding: 0 12px; border: 2px solid var(--fg); border-radius: 17px; background: transparent; color: var(--fg); cursor: pointer; font: 700 13px "Archivo", system-ui, sans-serif; }
+.personapick button[aria-pressed="true"] { background: var(--fg); color: var(--scene); }
+html:not(.js) .personapick { display: none; }
 .cardswitch { display: inline-flex; gap: 4px; margin-bottom: 12px; padding: 4px; border-radius: 24px; background: color-mix(in srgb, var(--fg) 16%, transparent); }
 .cardswitch button { min-height: 38px; padding: 0 16px; border: 0; border-radius: 19px; background: transparent; color: var(--fg); cursor: pointer; font: 800 14px "Archivo", system-ui, sans-serif; }
 .cardswitch button[aria-pressed="true"] { background: var(--fg); color: var(--scene); }
@@ -345,7 +349,7 @@ html:not(.js) .cardswitch { display: none; }
 .receipt .brand { font-size: 6cqw; font-weight: 700; line-height: 1.02; text-align: center; }
 .receipt .meta { margin: .6cqw 0; font-size: 3.15cqw; font-weight: 700; text-align: center; }
 .receipt .hero { display: flex; align-items: center; gap: 3cqw; padding: 1cqw 0; border-block: .4cqw dashed #1c1c1c; }
-.receipt .hero img { flex: none; width: 17cqw; height: 23cqw; background: transparent; }
+.receipt .hero img { flex: none; box-sizing: border-box; width: 17cqw; height: 23cqw; padding: .4cqw; border: .6cqw solid #1c1c1c; border-radius: 1.4cqw; background: white; }
 .receipt .tag { font-size: 3.3cqw; font-weight: 700; }
 .receipt .who { font-size: 6.2cqw; font-weight: 700; line-height: 1.05; text-transform: uppercase; }
 .receipt h4 { margin: 0 0 .3cqw; font-size: 3.9cqw; font-weight: 700; text-align: center; }
@@ -453,6 +457,8 @@ html.blend section.in .container, html.blend section.in .shareline {
   .face { box-shadow: 5px 5px 0 #06241e; }
   .pitch { display: flex; flex-direction: column; align-items: center; }
   .cardswitch { margin-bottom: 6px; }
+  .personapick { flex-wrap: nowrap; max-width: calc(100vw - 32px); max-height: none; margin-bottom: 6px; overflow-x: auto; overflow-y: hidden; }
+  .shareline:has(.personapick) .poster { --ph: min(calc(66 * var(--vh)), 150vw); }
   .sharedialog[open] { flex-direction: column; gap: 12px; }
   .sharedialog > img { height: min(58dvh, 520px); }
   .shareactions { width: 100%; }

@@ -393,6 +393,11 @@
             <div class="pitch">
               <h2>That was your {{ w.semester_short }}</h2>
               <p>Pick a card, share it, and see how your friends stack up.</p>
+              {% if share_people|length > 1 %}
+              <div class="personapick" role="group" aria-label="Personality on your card">
+                {% for person in share_people %}<button type="button" data-name="{{ person.name }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ person.name }}</button>{% endfor %}
+              </div>
+              {% endif %}
               <div class="cardswitch" role="group" aria-label="Card style">
                 <button type="button" data-choice="trading" aria-pressed="true">Trading card</button>
                 <button type="button" data-choice="receipt" aria-pressed="false">Receipt</button>
@@ -402,7 +407,7 @@
             </div>
             {{ cards(share, w.personality, w.semester_short, name, picture) }}
           </div>
-          <script id="share-data" type="application/json">{{ {"owner": name or "My Wrapped", "guest": name, "semester": w.semester_short, "personality": w.personality.name, "image": picture, "plan": share.plan, "tone": "#ff7bb0" if share.plan == "YCMP" else "#16d0a6", "stats": share.stats, "sections": share.sections}|tojson }}</script>
+          <script id="share-data" type="application/json">{{ {"owner": name or "My Wrapped", "guest": name, "semester": w.semester_short, "personality": w.personality.name, "personalities": share_people, "image": picture, "plan": share.plan, "tone": "#ff7bb0" if share.plan == "YCMP" else "#16d0a6", "stats": share.stats, "sections": share.sections}|tojson }}</script>
         </section>
 
         {% if h.raw_sections %}

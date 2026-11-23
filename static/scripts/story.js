@@ -3,9 +3,9 @@ const Story = (() => {
   const FORWARD = ["ArrowRight", "ArrowDown", "PageDown", " "];
   const BACK = ["ArrowLeft", "ArrowUp", "PageUp"];
   // Clicking these does their own thing instead of moving to the next screen.
-  const INTERACTIVE = "a, button, input, select, textarea, label, .wheelstage, .wheelinfo, .rawdata, .xmonth, .xday-list, .xvisit-list, .xchips, .heatmap, .story-nav, .poster, .cardswitch, dialog";
+  const INTERACTIVE = "a, button, input, select, textarea, label, .wheelstage, .wheelinfo, .rawdata, .xmonth, .xday-list, .xvisit-list, .xchips, .heatmap, .story-nav, .poster, .personapick, .cardswitch, dialog";
   // Up and down scroll these lists when the keyboard is inside them.
-  const SCROLLS_ITSELF = ".wheelinfo, .rawdata, .xday-list, .xvisit-list, .xchips";
+  const SCROLLS_ITSELF = ".personapick, .wheelinfo, .rawdata, .xday-list, .xvisit-list, .xchips";
   const CLONE_COLORS = ["#afb1ff", "#16d0a6", "#ffe24a", "#fff6e9"];
   // What the art has to stay clear of. Text is measured by its letters, the rest by its box.
   const TEXT = "h1, h2, .big, .caption, .headline, .remark, .notice, .feedback, .stamp, .itemname, .itemvalue";

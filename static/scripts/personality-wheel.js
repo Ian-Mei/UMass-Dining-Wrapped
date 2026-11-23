@@ -114,6 +114,8 @@ const PersonalityWheel = (() => {
       if (browsing) count.textContent = `${current + 1} of ${owned.length}`;
       root.classList.add("landed");
       if (more) more.disabled = false;
+      // The share card follows the one they stop on while browsing.
+      if (browsing) root.dispatchEvent(new CustomEvent("personality-shown", { bubbles: true, detail: { name } }));
     };
 
     const turnTo = (index) => {
