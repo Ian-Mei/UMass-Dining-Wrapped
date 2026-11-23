@@ -1,9 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=Asap&display=swap");
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: "Asap", sans-serif;
+  font-family: "Archivo", system-ui, sans-serif;
   scroll-behavior: smooth;
   box-sizing: border-box;
   -webkit-box-sizing: border-box;
@@ -995,7 +994,7 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
   background: #eceef4;
   color: #42455a;
   cursor: pointer;
-  font: 600 11px "Asap", sans-serif;
+  font: 600 11px "Archivo", system-ui, sans-serif;
 }
 .xcell.empty { background: transparent; }
 .xcell:disabled { cursor: default; color: #7d8296; }
@@ -1072,15 +1071,14 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
   justify-content: space-between;
   padding: 6px 10px;
 }
-.xday-nav button, .explore-link {
+.xday-nav button {
   background: none;
   border: none;
   color: #6a4fd1;
   cursor: pointer;
-  font: 700 13px "Asap", sans-serif;
+  font: 700 13px "Archivo", system-ui, sans-serif;
   padding: 4px;
 }
-.explore-link { display: block; margin: 0 auto 8px; text-align: center; }
 .xchips {
   display: flex;
   gap: 6px;
@@ -1095,12 +1093,11 @@ section.explore.places { background: linear-gradient(160deg, #1d5f6b, #0e2f40); 
   color: #42455a;
   cursor: pointer;
   flex: none;
-  font: 700 12px "Asap", sans-serif;
+  font: 700 12px "Archivo", system-ui, sans-serif;
   padding: 5px 11px;
 }
 .xchip.on { background: #42455a; color: white; }
 #explore-places .xnote { margin: 0 14px 8px; }
-a.listitem.explorable { color: inherit; cursor: pointer; text-decoration: none; }
 
 /* All your data: one small table per section (dining halls, Blue Wall, ...), scrolling inside the card. */
 .rawdata {
@@ -1175,7 +1172,7 @@ a.listitem.explorable { color: inherit; cursor: pointer; text-decoration: none; 
 }
 
 /* Small buttons get at least WCAG 2.2's 24px target. */
-.xday-nav button, .explore-link { min-height: 32px; }
+.xday-nav button { min-height: 32px; }
 .xchip { min-height: 28px; }
 #personality .wheelmore { min-height: 32px; }
 

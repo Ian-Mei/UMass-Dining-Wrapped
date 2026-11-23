@@ -5,16 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UMass Dining Wrapped</title>
     <link rel="icon" href="{{ url_for('static', filename='styles/imgs/UMassDiningWrapped.jpg') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Space+Mono:wght@400;700&display=swap"></noscript>
     <link href="{{ url_for('static', filename='styles/wrapped.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='styles/screens.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='styles/story.css') }}" rel="stylesheet" />
     {% include "_goatcounter.html" %}
 </head>
 <body>
+        {% from "_sprites.html" import art %}
+        {% from "_share_cards.html" import cards %}
         {% set swipes = w.swipes %}
         {% set h = w.highlights %}
         {# Places that Explore your places lists, so links only point at ones it has. #}
         {% set explorable = h.explorer.places|map(attribute="name")|list %}
         <section id="home">
-          <img src="{{ url_for('static', filename='styles/imgs/background1.png') }}" class="background" alt="">
+          {{ art("home") }}
           <div class="container reveal">
             <h1>Welcome to {{ w.semester_short }} UMass Dining Wrapped &#8595;</h1>
             {% if maybe_cut_off %}
@@ -27,41 +33,41 @@
 
         {% if w.favorite_hall %}
         {% set fav = swipes[w.favorite_hall] %}
-        <section id="favDC">
-          <img src="{{ url_for('static', filename='styles/imgs/background2.png') }}" class="background" alt="">
-          <div class="container reveal">
+        <section id="favIntro">
+          {{ art("favIntro") }}
+          <div class="container">
             <h2>Out of all the Dining Halls<br> one had a special place in your heart</h2>
-            <div class="text-container">
+          </div>
+        </section>
 
-                <div class="listbox dramaticreveal">
-                  <div class = "listheader">
-                    <h1 class="title">{{ w.favorite_hall }}</h1>
-                  </div>
-
-                  <div class="list">
-                    {% for label, row in [("Breakfast", "Breakfast"), ("Lunch", "Lunch"), ("Dinner", "Dinner"), ("Late Night", "Late_Night"), ("GrabNGo", "GrabNGo")] %}
-                      {% if fav[row] is not none %}
-                      <div class="listitem">
-                        <span class="itemname">{{ label }}</span>
-                        <span class="itemvalue">{{ fav[row] }}<span>Times</span></span>
-                      </div>
-                      {% endif %}
-                    {% endfor %}
+        <section id="favDC">
+          {{ art("favDC") }}
+          <div class="container">
+            <div class="listbox statcard">
+              <div class="listheader"><h1 class="title">{{ w.favorite_hall }}</h1></div>
+              <div class="statbody">
+                <p class="big">{{ fav["Total"] }}</p>
+                <p class="caption">times this semester</p>
+                <div class="list">
+                  {% for label, row in [("Breakfast", "Breakfast"), ("Lunch", "Lunch"), ("Dinner", "Dinner"), ("Late Night", "Late_Night"), ("GrabNGo", "GrabNGo")] %}
+                    {% if fav[row] is not none %}
                     <div class="listitem">
-                      <span class="itemname">Total</span>
-                      <span class="itemvalue">{{ fav["Total"] }}<span>Times</span></span>
+                      <span class="itemname">{{ label }}</span>
+                      <span class="itemvalue">{{ fav[row] }}<span>Times</span></span>
                     </div>
-                  </div>
+                    {% endif %}
+                  {% endfor %}
                 </div>
-
               </div>
+              <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
+            </div>
           </div>
         </section>
         {% endif %}
 
         {% if h.routine %}
         <section id="routine" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background2.png') }}" class="background" alt="">
+          {{ art("routine") }}
           <div class="container reveal">
             <h2 class="stat-intro">You're a creature of habit</h2>
             <div class="listbox statcard">
@@ -80,6 +86,7 @@
         {% if h.blue_wall %}
         {% set bw = h.blue_wall %}
         <section id="bluewall" class="stat bluewall">
+          {{ art("bluewall") }}
           <div class="container reveal">
             <h2 class="stat-intro">Your #1 at Blue Wall was&hellip;</h2>
             <div class="listbox statcard">
@@ -88,7 +95,6 @@
                 <p class="big">{{ bw.top.swipes }}</p>
                 <p class="caption">meal swipe{{ "s" if bw.top.swipes != 1 }} this semester</p>
                 <p class="remark">{{ bw.remark }}</p>
-                {% if h.explorer.swipes_too and bw.top.place in explorable %}<a class="explore-link" href="#places" data-explore-place="{{ bw.top.place }}">See every visit &rarr;</a>{% endif %}
               </div>
               <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
             </div>
@@ -96,6 +102,7 @@
         </section>
 
         <section id="bluewallchart" class="stat bluewall deep">
+          {{ art("bluewallchart") }}
           <div class="container reveal">
             <h2 class="stat-intro">Your Blue Wall chart</h2>
             <div class="listbox statcard">
@@ -118,6 +125,7 @@
 
         {% if h.harvest %}
         <section id="harvest" class="stat harvest">
+          {{ art("harvest") }}
           <div class="container reveal">
             <h2 class="stat-intro">Not Blue Wall, but&hellip;</h2>
             <div class="listbox statcard">
@@ -126,7 +134,6 @@
                 <p class="big">{{ h.harvest.swipes }}</p>
                 <p class="caption">meal swipes at Harvest Market</p>
                 <p class="remark">{{ h.harvest.remark }}</p>
-                {% if h.explorer.swipes_too and h.harvest.place in explorable %}<a class="explore-link" href="#places" data-explore-place="{{ h.harvest.place }}">See every visit &rarr;</a>{% endif %}
               </div>
               <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
             </div>
@@ -137,7 +144,7 @@
         {% if h.top_ups %}
         {% set t = h.top_ups %}
         <section id="topups" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background2.png') }}" class="background" alt="">
+          {{ art("topups") }}
           <div class="container reveal">
             <h2 class="stat-intro">When a swipe wasn't enough</h2>
             <div class="listbox statcard">
@@ -162,19 +169,18 @@
 
         {% if not w.vendors.empty %}
         <section id="top3vendors" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background3.png') }}" class="background" alt="">
+          {{ art("top3vendors") }}
           <div class="container reveal">
             <h2 class="stat-intro">You used a lot of dining dollars, lets see where you spent them</h2>
             <div class="listbox statcard dramaticreveal">
               <div class="listheader"><h1 class="title">Top Spots</h1></div>
               <div class="list">
                 {% for name, vendor in w.vendors.head(3).iterrows() %}
-                {% if name in explorable %}<a class="listitem explorable" href="#places" data-explore-place="{{ name }}">{% else %}<div class="listitem">{% endif %}
+                <div class="listitem">
                   <span class="itemname">{{ loop.index }}. {{ name }}<small>{{ vendor.visits|int }} visit{{ "s" if vendor.visits != 1 }}</small></span>
                   <span class="itemvalue">${{ "%.2f"|format(vendor.spent) }}</span>
-                {% if name in explorable %}</a>{% else %}</div>{% endif %}
+                </div>
                 {% endfor %}
-                {% if explorable %}<p class="caption">Tap a spot to see every visit</p>{% endif %}
               </div>
               <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
             </div>
@@ -185,7 +191,7 @@
         {% if h.clock %}
         {% set c = h.clock %}
         <section id="clock" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background5.png') }}" class="background" alt="">
+          {{ art("clock") }}
           <div class="container reveal">
             <h2 class="stat-intro">Your dining clock</h2>
             <div class="listbox statcard">
@@ -217,7 +223,7 @@
 
         {% if h.calendar.weeks %}
         <section id="calendar" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background1.png') }}" class="background" alt="">
+          {{ art("calendar") }}
           <div class="container reveal">
             <h2 class="stat-intro">Your semester, day by day</h2>
             <div class="listbox statcard">
@@ -244,7 +250,7 @@
         {% if h.fun %}
         {% set f = h.fun %}
         <section id="funfacts" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background3.png') }}" class="background" alt="">
+          {{ art("funfacts") }}
           <div class="container reveal">
             <h2 class="stat-intro">A few more things we noticed</h2>
             <div class="listbox statcard">
@@ -273,12 +279,12 @@
         {% endif %}
 
         {% if w.laundry %}
-        <section id="laundry">
-          <img src="{{ url_for('static', filename='styles/imgs/background3.png') }}" class="background" alt="">
+        <section id="laundry" class="stat">
+          {{ art("laundry") }}
           <div class="container reveal">
-            <h2>And some clean clothes along the way</h2>
+            <h2 class="stat-intro">And some clean clothes along the way</h2>
             <div class="text-container">
-              <div class="listbox dramaticreveal">
+              <div class="listbox statcard">
                 <div class = "listheader">
                   <h1 class="title">Laundry</h1>
                 </div>
@@ -304,6 +310,7 @@
                     <span class="itemvalue">{{ w.laundry.favorite_day }}</span>
                   </div>
                 </div>
+                <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
               </div>
             </div>
           </div>
@@ -312,7 +319,7 @@
 
         {% if h.plans %}
         <section id="plans" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background4.png') }}" class="background" alt="">
+          {{ art("plans") }}
           <div class="container reveal">
             <h2 class="stat-intro">Will you make it to finals?</h2>
             <div class="listbox statcard">
@@ -347,7 +354,7 @@
         {% endif %}
 
         <section id="personality">
-          <img src="{{ url_for('static', filename='styles/imgs/background4.png') }}" class="background" alt="">
+          {{ art("personality") }}
           {# static/scripts/personality-wheel.js spins the wheel the first time this screen shows. #}
           <div class="container wheelscreen" id="wheel" data-owned="{{ w.personalities|map(attribute='name')|list|tojson|forceescape }}">
             <h1>UMass Dining Personalities</h1>
@@ -379,9 +386,33 @@
           </div>
         </section>
 
+        <section id = "card">
+          {{ art("card") }}
+          {% set picture = url_for('static', filename='styles/imgs/personalities/' + w.personality.image + '.png') %}
+          <div class="shareline">
+            <div class="pitch">
+              <h2>That was your {{ w.semester_short }}</h2>
+              <p>Pick a card, share it, and see how your friends stack up.</p>
+              {% if share_people|length > 1 %}
+              <div class="personapick" role="group" aria-label="Personality on your card">
+                {% for person in share_people %}<button type="button" data-name="{{ person.name }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ person.name }}</button>{% endfor %}
+              </div>
+              {% endif %}
+              <div class="cardswitch" role="group" aria-label="Card style">
+                <button type="button" data-choice="trading" aria-pressed="true">Trading card</button>
+                <button type="button" data-choice="receipt" aria-pressed="false">Receipt</button>
+              </div>
+              <button type="button" class="sharebtn">Share</button>
+              <span class="sharestatus" role="status"></span>
+            </div>
+            {{ cards(share, w.personality, w.semester_short, name, picture) }}
+          </div>
+          <script id="share-data" type="application/json">{{ {"owner": name or "My Wrapped", "guest": name, "semester": w.semester_short, "personality": w.personality.name, "personalities": share_people, "image": picture, "plan": share.plan, "tone": "#ff7bb0" if share.plan == "YCMP" else "#16d0a6", "stats": share.stats, "sections": share.sections}|tojson }}</script>
+        </section>
+
         {% if h.raw_sections %}
         <section id="tables" class="stat">
-          <img src="{{ url_for('static', filename='styles/imgs/background5.png') }}" class="background" alt="">
+          {{ art("tables") }}
           <div class="container reveal">
             <h2 class="stat-intro">All your data</h2>
             <div class="listbox statcard">
@@ -414,6 +445,7 @@
 
         {% if h.explorer.purchases %}
         <section id="days" class="stat explore">
+          {{ art("days") }}
           <div class="container reveal">
             <h2 class="stat-intro">Explore your days</h2>
             <div class="listbox statcard" id="explore-days">
@@ -434,6 +466,7 @@
 
         {% if h.explorer.places %}
         <section id="places" class="stat explore places">
+          {{ art("places") }}
           <div class="container reveal">
             <h2 class="stat-intro">Explore your places</h2>
             <div class="listbox statcard" id="explore-places">
@@ -450,43 +483,8 @@
         <script id="explorer-data" type="application/json">{{ {"purchases": h.explorer.purchases, "places": h.explorer.places, "busiest": h.fun.busiest_day.isoformat() if h.fun else None}|tojson }}</script>
         {% endif %}
 
-        <section id = "card">
-          <img src="{{ url_for('static', filename='styles/imgs/background1.png') }}" class="background" alt="">
-          <div class = "container reveal">
-          <div class="info-card">
-            <div class="div">
-              <div class="text-wrapper">Top Dining halls</div>
-              <div class="flexcontainer">
-                {% for hall, visits in w.hall_ranking %}
-                <p class="text">
-                  <span class="span">{{ hall }} - {{ visits }} times<br /></span>
-                </p>
-                {% endfor %}
-              </div>
-              <div class="text-wrapper-2">Top Vendors</div>
-              <div class="flexcontainer-2">
-                {% for name, vendor in w.vendors.head(4).iterrows() %}
-                 <p class="text">
-                  <span class="span">{{ name }} - ${{ "%.2f"|format(vendor.spent) }} Spent<br /></span>
-                </p>
-                {% endfor %}
-              </div>
-              <div class="rectangle"></div>
-              <div class="text-wrapper-3">{{ w.semester_short }} Wrapped</div>
-              {% if name %}<div class="text-wrapper-4">{{ name }}</div>{% endif %}
-              <img class="umassdiningwrapped" src="{{ url_for('static', filename='styles/imgs/UMassDiningWrapped.jpg') }}" alt="UMass Dining Wrapped" />
-              <div class="text-wrapper-5">Mealswipes Used</div>
-              <div class="text-wrapper-6">{{ w.total_swipes }}</div>
-              <div class="text-wrapper-7">Dining Dollars Used</div>
-              <div class="text-wrapper-8">${{ "%.2f"|format(w.total_spent) }}</div>
-            </div>
-          </div>
-        </div>
-        </section>
-
-
         <section id="end">
-          <img src="{{ url_for('static', filename='styles/imgs/background7.png') }}" class="background" alt="">
+          {{ art("end") }}
           <div class="container reveal">
             <h1>Thanks for using my app! <br>Check out my socials and other things I've made on my <a href="https://ian-mei.github.io" target="_blank" rel="noopener">Website</a></h1>
             <p class="feedback">Something off, or an idea? <a href="{{ feedback_url }}" target="_blank" rel="noopener">Tell me in this form</a></p>
@@ -537,7 +535,24 @@
             </div>
           </div>
         </section>
-        <script src="{{ url_for('static', filename='scripts/script.js') }}"></script>
+        <dialog class="sharedialog" aria-labelledby="share-title">
+          <img src="" alt="">
+          <div class="shareactions">
+            <h3 id="share-title">Your card is ready</h3>
+            <p>Post it, send it to the group chat, and compare.</p>
+            <button type="button" class="sharecopy">Copy image</button>
+            <button type="button" class="sharesave">Save image</button>
+            <button type="button" class="sharesheet" hidden>Share</button>
+            <button type="button" class="shareclose">Close</button>
+            <p class="sharemessage" role="status"></p>
+          </div>
+        </dialog>
+        <nav class="story-nav" aria-label="Move between screens">
+          <button type="button" class="story-prev" aria-label="Previous screen">&uarr;</button>
+          <button type="button" class="story-next" aria-label="Next screen">&darr;</button>
+        </nav>
+        <script src="{{ url_for('static', filename='scripts/story.js') }}"></script>
+        <script src="{{ url_for('static', filename='scripts/share-card.js') }}"></script>
         <script src="{{ url_for('static', filename='scripts/explorer.js') }}"></script>
         <script src="{{ url_for('static', filename='scripts/personality-wheel.js') }}"></script>
 </body>

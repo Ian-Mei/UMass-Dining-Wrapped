@@ -1,0 +1,159 @@
+// Run with: node --test tests/*.test.js
+const test = require("node:test");
+const assert = require("node:assert");
+const S = require("../static/scripts/story.js");
+const C = require("../static/scripts/share-card.js");
+
+test("arrow keys, space and page keys move one screen", () => {
+  for (const key of ["ArrowRight", "ArrowDown", "PageDown", " "]) assert.strictEqual(S.keyStep(key), 1);
+  for (const key of ["ArrowLeft", "ArrowUp", "PageUp"]) assert.strictEqual(S.keyStep(key), -1);
+  assert.strictEqual(S.keyStep("a"), 0);
+});
+
+test("moving stops at the first and last screen", () => {
+  assert.strictEqual(S.targetIndex(3, 1, 10), 4);
+  assert.strictEqual(S.targetIndex(0, -1, 10), 0);
+  assert.strictEqual(S.targetIndex(9, 1, 10), 9);
+});
+
+test("text shrinks only as far as it needs to fit", () => {
+  const measure = (text, size) => text.length * size * 0.5;
+  assert.strictEqual(C.fitSize(measure, "Joe", 100, 900), 100);
+  const size = C.fitSize(measure, "A Very Long Personality Name", 100, 500);
+  assert.ok(size < 100 && measure("A Very Long Personality Name", size) <= 500);
+});
+
+test("the saved file is named for the semester", () => {
+  assert.strictEqual(C.fileName("Fall 26"), "umass-dining-wrapped-fall-26.png");
+});
+
+test("art is clear of a block only with a gap around it", () => {
+  const art = { left: 0, top: 0, right: 100, bottom: 100 };
+  assert.strictEqual(S.clearOf(art, [{ left: 120, top: 0, right: 200, bottom: 50 }], 10), true);
+  assert.strictEqual(S.clearOf(art, [{ left: 105, top: 0, right: 200, bottom: 50 }], 10), false);
+  assert.strictEqual(S.clearOf(art, [], 10), true);
+});
+
+test("art takes the largest size that's clear, or none", () => {
+  const clearAt = (limit) => (fit) => fit <= limit;
+  assert.strictEqual(S.bestFit([1, 0.8, 0.6], clearAt(1)), 1);
+  assert.strictEqual(S.bestFit([1, 0.8, 0.6], clearAt(0.7)), 0.6);
+  assert.strictEqual(S.bestFit([1, 0.8, 0.6], clearAt(0.5)), null);
+});
+
+test("laptops save the card; only phones open the share sheet", () => {
+  assert.strictEqual(C.usesShareSheet(true, false), false);
+  assert.strictEqual(C.usesShareSheet(true, true), true);
+  assert.strictEqual(C.usesShareSheet(false, true), false);
+});
+
+test("the background holds each color, then blends to the next", () => {
+  const colors = ["#111111", "#222222", "#333333"];
+  const tops = [0, 100, 200];
+  assert.strictEqual(S.backdropColor(colors, tops, 0), "#111111");
+  assert.strictEqual(S.backdropColor(colors, tops, 100), "#222222");
+  assert.strictEqual(S.backdropColor(colors, tops, 50), "color-mix(in oklab, #222222 50.0%, #111111)");
+  assert.strictEqual(S.backdropColor(colors, tops, 125), "color-mix(in oklab, #333333 15.6%, #222222)");
+});
+
+test("scrolling past either end keeps the end color", () => {
+  const colors = ["#111111", "#222222"];
+  assert.strictEqual(S.backdropColor(colors, [0, 100], -40), "#111111");
+  assert.strictEqual(S.backdropColor(colors, [0, 100], 180), "#222222");
+});
+
+test("a screen's offset runs from -1 before it arrives to 1 after it's passed", () => {
+  assert.strictEqual(S.screenOffset(100, 100, 100), 0);
+  assert.strictEqual(S.screenOffset(150, 100, 100), 0.5);
+  assert.strictEqual(S.screenOffset(50, 100, 100), -0.5);
+  assert.strictEqual(S.screenOffset(900, 100, 100), 1);
+  assert.strictEqual(S.screenOffset(-900, 100, 100), -1);
+});
+
+test("shift+space goes back, and other shift+keys stay with the browser", () => {
+  assert.strictEqual(S.keyStep(" ", true), -1);
+  assert.strictEqual(S.keyStep("ArrowDown", true), 0);
+  assert.strictEqual(S.keyStep("ArrowLeft", true), 0);
+});
+
+test("the keys only stay in a box that really has more to scroll", () => {
+  assert.strictEqual(S.canScroll({ scrollHeight: 200, clientHeight: 100, scrollWidth: 50, clientWidth: 50 }), true);
+  assert.strictEqual(S.canScroll({ scrollHeight: 100, clientHeight: 100, scrollWidth: 90, clientWidth: 50 }), true);
+  assert.strictEqual(S.canScroll({ scrollHeight: 100, clientHeight: 100, scrollWidth: 50, clientWidth: 50 }), false);
+});
+
+test("the card style flips between trading card and receipt", () => {
+  assert.strictEqual(C.nextStyle("trading"), "receipt");
+  assert.strictEqual(C.nextStyle("receipt"), "trading");
+});
+
+test("the saved file says which card it is", () => {
+  assert.strictEqual(C.fileName("Fall 26", "receipt"), "umass-dining-wrapped-fall-26-receipt.png");
+});
+
+test("sections spread out to fill the card, within limits", () => {
+  assert.strictEqual(C.sectionGap(600, 400, 3, 20, 200), 100);
+  assert.strictEqual(C.sectionGap(1000, 400, 3, 20, 90), 90);
+  assert.strictEqual(C.sectionGap(410, 400, 3, 20, 90), 20);
+  assert.strictEqual(C.sectionGap(500, 400, 1, 20, 90), 20);
+});
+
+test("a personality name stays on one line when it fits", () => {
+  const measure = (text, size) => text.length * size * 0.5;
+  assert.deepStrictEqual(C.nameLines("AVERAGE JOE", measure, 60, 400, 50), ["AVERAGE JOE"]);
+  assert.deepStrictEqual(C.nameLines("WORCESTER WARRIOR", measure, 60, 300, 50), ["WORCESTER", "WARRIOR"]);
+  assert.deepStrictEqual(C.nameLines("CONNOISSEUR", measure, 60, 100, 50), ["CONNOISSEUR"]);
+});
+
+test("a picked personality has to be one of theirs", () => {
+  const people = [{ name: "Avatar", image: "a.png" }, { name: "Vampire", image: "v.png" }];
+  assert.strictEqual(C.findPersonality(people, "Vampire").image, "v.png");
+  assert.strictEqual(C.findPersonality(people, "Greedy"), null);
+  assert.strictEqual(C.findPersonality(undefined, "Avatar"), null);
+});
+
+test("a card image is stored under the style it was drawn for", async () => {
+  const finish = {};
+  const images = C.cardImages((style) => new Promise((resolve) => { finish[style] = () => resolve(new Blob([style])); }));
+  const trading = images.get("trading");
+  const receipt = images.get("receipt");
+  finish.receipt();
+  finish.trading();
+  assert.strictEqual(await (await trading).blob.text(), "trading");
+  assert.strictEqual(await (await receipt).blob.text(), "receipt");
+});
+
+test("an image from before a personality change isn't kept", async () => {
+  let drawn = 0;
+  const finish = [];
+  const images = C.cardImages(() => new Promise((resolve) => { const n = ++drawn; finish.push(() => resolve(new Blob([String(n)]))); }));
+  const old = images.get("trading");
+  images.clear();
+  const fresh = images.get("trading");
+  finish.forEach((done) => done());
+  await old;
+  assert.strictEqual(await (await fresh).blob.text(), "2");
+  assert.strictEqual(await images.get("trading"), await fresh);
+});
+
+test("a failed drawing can be tried again", async () => {
+  let tries = 0;
+  const images = C.cardImages(async () => { if (++tries === 1) throw new Error("no"); return new Blob(["ok"]); });
+  await assert.rejects(images.get("receipt"));
+  await new Promise((resolve) => setTimeout(resolve));
+  assert.strictEqual(await (await images.get("receipt")).blob.text(), "ok");
+});
+
+test("a screen taller than the window still counts as on screen", () => {
+  const { onScreen } = require("../static/scripts/story.js");
+  assert.strictEqual(onScreen(0.51, 360, 360), true);
+  assert.strictEqual(onScreen(0.6, 400, 800), true);
+  assert.strictEqual(onScreen(0.3, 240, 800), false);
+});
+
+test("behind the preview only Space on a button does anything", () => {
+  const { blockedBehindDialog } = require("../static/scripts/story.js");
+  assert.strictEqual(blockedBehindDialog("ArrowDown", true), true);
+  assert.strictEqual(blockedBehindDialog(" ", false), true);
+  assert.strictEqual(blockedBehindDialog(" ", true), false);
+});

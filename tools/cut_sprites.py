@@ -1,0 +1,125 @@
+"""Cuts the flattened art in art/backgrounds/ into sprites for the results page.
+
+Run from the repo root after changing a background or tools/screens.py:  python -m tools.cut_sprites
+Writes static/styles/imgs/sprites/*.png, templates/_sprites.html and static/styles/screens.css.
+"""
+from collections import Counter
+from pathlib import Path
+
+from tools.screens import SCREENS, placement, text_color
+
+WIDTH, HEIGHT = 1920, 1080
+SCENES = {"maroon": 1, "plum": 2, "coral": 3, "periwinkle": 4, "teal": 5, "black": 7}
+BLOCK = 6        # shapes closer than about this many pixels count as one sprite
+MIN_PIXELS = 400
+# Pieces of one drawing that leaves the frame and comes back, or a squiggle and its bubbles. Numbers
+# are each scene's pieces in reading order. They stay exactly where they were drawn, as one sprite.
+JOINED = {
+    "maroon": [(2, 3, 4), (5, 7), (6, 9)],
+    "plum": [(0, 1), (2, 3)],
+    "coral": [(2, 3), (4, 7)],
+    "periwinkle": [(2, 4), (3, 5, 6)],
+    "teal": [(0, 1), (3, 4)],
+    "black": [(0, 1), (2, 3), (5, 6)],
+}
+
+
+def grouped(count, joined):
+    """Every piece's index once, as groups, ordered by each group's first piece."""
+    taken = {index: group for group in joined for index in group}
+    return [taken.get(index, (index,)) for index in range(count) if index == taken.get(index, (index,))[0]]
+
+
+def labelled_blocks(mask):
+    """Groups the art's pixels into shapes. Returns (ys, xs, label of each pixel, shape count)."""
+    import numpy as np
+
+    h, w = mask.shape
+    grid_h, grid_w = h // BLOCK + 1, w // BLOCK + 1
+    grid = np.zeros((grid_h, grid_w), bool)
+    ys, xs = np.nonzero(mask)
+    grid[ys // BLOCK, xs // BLOCK] = True
+    labels = -np.ones((grid_h, grid_w), int)
+    count = 0
+    for start_y, start_x in zip(*np.nonzero(grid)):
+        if labels[start_y, start_x] >= 0:
+            continue
+        labels[start_y, start_x] = count
+        stack = [(start_y, start_x)]
+        while stack:
+            y, x = stack.pop()
+            for ny in range(max(y - 1, 0), min(y + 2, grid_h)):
+                for nx in range(max(x - 1, 0), min(x + 2, grid_w)):
+                    if grid[ny, nx] and labels[ny, nx] < 0:
+                        labels[ny, nx] = count
+                        stack.append((ny, nx))
+        count += 1
+    return ys, xs, labels[ys // BLOCK, xs // BLOCK], count
+
+
+def cut_scene(scene, number, source, out):
+    """Saves one background's sprites and returns {name: (width, height, cut sides)}."""
+    import fitz
+    import numpy as np
+
+    pix = fitz.Pixmap(str(source / f"background{number}.png"))
+    if pix.alpha:
+        pix = fitz.Pixmap(pix, 0)
+    rgb = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, 3).astype(float)
+    color = np.array(Counter(map(tuple, rgb[::7, ::7].reshape(-1, 3).astype(int))).most_common(1)[0][0], float)
+    distance = np.abs(rgb - color).max(axis=2)
+    ys, xs, labels, count = labelled_blocks(distance > 10)
+
+    kept = [label for label in range(count) if (labels == label).sum() >= MIN_PIXELS]
+    sprites = {}
+    for index, group in enumerate(grouped(len(kept), JOINED.get(scene, ()))):
+        chosen = np.isin(labels, [kept[i] for i in group])
+        y0, y1, x0, x1 = ys[chosen].min(), ys[chosen].max() + 1, xs[chosen].min(), xs[chosen].max() + 1
+        own = np.zeros((y1 - y0, x1 - x0), bool)
+        own[ys[chosen] - y0, xs[chosen] - x0] = True
+        alpha = ((distance[y0:y1, x0:x1] - 8) / 26).clip(0, 1) * own
+        a = alpha[..., None]
+        # PyMuPDF stores alpha premultiplied. Taking the old background back out of each soft pixel
+        # keeps the edges clean on a different color.
+        premultiplied = (rgb[y0:y1, x0:x1] - (1 - a) * color).clip(0, 255 * a)
+        rgba = np.dstack([premultiplied, alpha * 255]).round().astype(np.uint8)
+        name = f"{scene}-{index:02d}"
+        w, h = int(x1 - x0), int(y1 - y0)
+        fitz.Pixmap(fitz.csRGB, w, h, rgba.tobytes(), True).save(out / f"{name}.png")
+        sprites[name] = (w, h, {"L": bool(x0 == 0), "R": bool(x1 == WIDTH), "T": bool(y0 == 0), "B": bool(y1 == HEIGHT)})
+    return sprites
+
+
+def sprite_tag(name, size, spec, order):
+    w, h, cuts = size
+    css, flip_x, flip_y, kind = placement(cuts, spec)
+    flip = "" if (flip_x, flip_y) == (1, 1) else f' style="transform:scale({flip_x},{flip_y})"'
+    src = "{{ url_for('static', filename='styles/imgs/sprites/" + name + ".png') }}"
+    return (f'<span class="sprite {kind}" style="--w:{w};aspect-ratio:{w}/{h};{css};--d:{order}">'
+            f'<img src="{src}" width="{w}" height="{h}" alt="" loading="lazy"{flip}></span>')
+
+
+def main():
+    root = Path(__file__).parent.parent
+    out = root / "static" / "styles" / "imgs" / "sprites"
+    out.mkdir(parents=True, exist_ok=True)
+    for old in out.glob("*.png"):
+        old.unlink()
+    sizes = {}
+    for scene, number in SCENES.items():
+        sizes.update(cut_scene(scene, number, root / "art" / "backgrounds", out))
+
+    lines = ["{# Generated by tools/cut_sprites.py from tools/screens.py. Edit that table and run it again. #}",
+             '{% macro art(screen) %}<div class="art" aria-hidden="true">']
+    css = ["/* Generated by tools/cut_sprites.py from tools/screens.py. */"]
+    for index, (screen, row) in enumerate(SCREENS.items()):
+        lines.append(("{% if" if index == 0 else "{% elif") + f' screen == "{screen}" %}}')
+        lines.extend(sprite_tag(piece[0], sizes[piece[0]], piece[1:], order) for order, piece in enumerate(row["art"]))
+        css.append(f"section#{screen} {{ --scene: {row['color']}; --fg: {text_color(row['color'])}; }}")
+    lines += ["{% endif %}", "</div>{% endmacro %}", ""]
+    (root / "templates" / "_sprites.html").write_text("\n".join(lines), encoding="utf8", newline="\n")
+    (root / "static" / "styles" / "screens.css").write_text("\n".join(css) + "\n", encoding="utf8", newline="\n")
+
+
+if __name__ == "__main__":
+    main()
