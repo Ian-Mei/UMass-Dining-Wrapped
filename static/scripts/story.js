@@ -54,7 +54,7 @@ const Story = (() => {
         last.set(screen, offset);
         screen.style.setProperty("--away", Math.abs(offset).toFixed(4));
         const art = screen.querySelector(":scope > .art");
-        if (art) art.style.visibility = Math.abs(offset) < 0.8 ? "visible" : "hidden";
+        if (art) art.style.visibility = Math.abs(offset) < 0.5 ? "visible" : "hidden";
       });
     };
     const queue = () => {

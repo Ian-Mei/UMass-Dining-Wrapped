@@ -118,3 +118,12 @@ def test_art_crossfades_in_place_so_its_cut_edges_never_show():
     assert "position: fixed" in rule
     assert "translate" not in rule
     assert "scale: calc(1 + var(--away, 0)" in rule  # only ever larger, so edges stay off-screen
+
+
+def test_one_screens_art_is_gone_before_the_next_appears():
+    css = story_css()
+    art = re.search(r"html\.blend section \.art \{([^}]*)\}", css).group(1)
+    content = re.search(r"html\.blend section\.in \.container, html\.blend section\.in \.shareline \{([^}]*)\}", css).group(1)
+    for rule in (art, content):
+        fade = float(re.search(r"opacity: calc\(1 - var\(--away, 0\) \* ([\d.]+)\)", rule).group(1))
+        assert fade >= 2  # fully faded by the halfway point

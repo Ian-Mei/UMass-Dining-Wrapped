@@ -326,12 +326,12 @@ html.blend { --section-bg: transparent; }
 html.blend section .art {
   position: fixed;
   inset: 0;
-  opacity: calc(1 - var(--away, 0) * 1.3);
+  opacity: calc(1 - var(--away, 0) * 2.2);
   scale: calc(1 + var(--away, 0) * .06);
   will-change: opacity, scale;
 }
 html.blend section.in .container, html.blend section.in .shareline {
-  opacity: calc(1 - var(--away, 0) * 1.7);
+  opacity: calc(1 - var(--away, 0) * 2.2);
 }
 
 /* ---- Motion: only once JavaScript is running ---- */
