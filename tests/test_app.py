@@ -384,3 +384,25 @@ def test_home_page_only_offers_the_bookmarklet(client):
     page = client.get("/").get_data(as_text=True)
     assert 'href="javascript:' in page
     assert 'type="file"' not in page and "Option 2" not in page
+
+
+def test_home_shows_laptop_users_what_to_do(client):
+    html = client.get("/").get_data(as_text=True)
+    demo = html[html.index('class="home-demo"'):html.index("</figure>")]
+    assert "imgs/how-to.gif" in demo
+    assert 'draggable="false"' in demo  # dragging the picture would bookmark the image, not the button
+    assert 'loading="lazy"' not in demo  # it's in the first screen on a laptop
+    assert '<source media="(max-width: 767px), (hover: none), (pointer: coarse)" srcset="data:image/gif' in demo  # touch screens skip it
+    assert 'media="(prefers-reduced-motion: reduce)"' in demo and "imgs/how-to-still.png" in demo
+    assert 'alt="How it works: drag the Dining Wrapped button to your bookmarks bar' in demo  # true of the still too
+
+
+def test_how_to_gif_is_small_and_only_for_laptops():
+    root = Path(__file__).parent.parent / "static" / "styles"
+    gif = root / "imgs" / "how-to.gif"
+    assert gif.read_bytes()[:6] == b"GIF89a"
+    assert gif.stat().st_size < 1_500_000
+    css = (root / "home.css").read_text(encoding="utf8")
+    assert ".home-demo { display: none;" in css
+    assert re.search(r"@media \(min-width: 768px\) and \(hover: hover\) and \(pointer: fine\) \{\s*\.home-demo \{ display: block;", css)
+    assert "max-width: 1120px" not in css  # the hero is 902px wide
