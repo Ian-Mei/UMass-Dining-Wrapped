@@ -1,0 +1,63 @@
+{# The two share cards. static/scripts/share-card.js flips between them and draws the saved image. #}
+{% macro trading_section(section) %}
+<div class="sec">
+  <h4>{{ section.title }}</h4>
+  {% if section.kind == "tiles" %}
+  <div class="tiles">{% for value, label in section.rows %}<div><b>{{ value }}</b><span>{{ label }}</span></div>{% endfor %}</div>
+  {% elif section.kind == "rank" %}
+  {% set top = section.rows[0][1] or 1 %}
+  {% for label, value in section.rows %}<div class="row"><span>{{ label }}</span><i class="bar" style="width: {{ (value / top * 100)|round|int }}%"></i><b>{{ value }}</b></div>{% endfor %}
+  {% else %}
+  {% for label, value in section.rows %}<div class="row plain"><span>{{ label }}</span><b>{{ value }}</b></div>{% endfor %}
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro receipt_section(section) %}
+<div class="sec">
+  <h4>{{ section.title|upper }}</h4>
+  {% for first, second in section.rows %}
+  {% if section.kind == "tiles" %}<div class="row"><span>{{ second }}</span><b>{{ first }}</b></div>{% else %}<div class="row"><span>{{ first }}</span><b>{{ second }}</b></div>{% endif %}
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro cards(share, personality, semester, name, picture) %}
+{% set tone = "#ff7bb0" if share.plan == "YCMP" else "#16d0a6" %}
+<div class="poster" data-style="trading" data-semester="{{ semester }}" style="--tone: {{ tone }}">
+  <div class="flipper">
+    <div class="face trading">
+      <div class="in">
+        <div class="top">{% if name %}<div class="text-wrapper-4">{{ name }}</div>{% else %}<div>My Wrapped</div>{% endif %}<div>{{ semester }}</div></div>
+        <div class="hero">
+          <img src="{{ picture }}" alt="{{ personality.name }}">
+          <div>
+            <div class="tag">Personality</div>
+            <div class="who">{{ personality.name }}</div>
+            {% if share.plan %}<span class="chip">{{ share.plan }}</span>{% endif %}
+          </div>
+        </div>
+        <div class="stats">{% for value, label in share.stats %}<div><b>{{ value }}</b><span>{{ label }}</span></div>{% endfor %}</div>
+        {% for section in share.sections %}{{ trading_section(section) }}{% endfor %}
+        <div class="foot posterstamp">UMass Dining Wrapped &middot; {{ semester }}</div>
+      </div>
+    </div>
+    <div class="face receipt" aria-hidden="true">
+      <div class="in">
+        <div class="brand">UMASS DINING<br>WRAPPED</div>
+        <div class="meta">{{ semester|upper }}{% if name %} &middot; GUEST: {{ name|upper }}{% endif %}{% if share.plan %} &middot; {{ share.plan|upper }}{% endif %}</div>
+        <div class="hero">
+          <img src="{{ picture }}" alt="">
+          <div><div class="tag">YOU ORDERED:</div><div class="who">{{ personality.name }}</div></div>
+        </div>
+        {% for section in share.sections %}{{ receipt_section(section) }}{% endfor %}
+        <div class="totals">
+          <div class="total"><span>{{ share.stats[0][1]|upper }}</span><span>{{ share.stats[0][0] }}</span></div>
+          {% for value, label in share.stats[1:] %}<div class="sub"><span>{{ label|upper }}</span><span>{{ value }}</span></div>{% endfor %}
+        </div>
+        <div><div class="code"></div><div class="foot">THANKS FOR EATING WITH US</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}

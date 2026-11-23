@@ -136,8 +136,7 @@ def test_laundry_only_share_card_has_no_zero_day_streak(client):  # noqa: F811
     rows = [["Student Debit Plan", "10/07/26 01:41:00 PM", "X - OAK DRYER 10", "-$1.40", "$5.80"]]
     html = upload(client, make_history_pdf(rows)).get_data(as_text=True)
     poster = html[html.index('class="poster"'):html.index("posterstamp")]
-    assert "day streak" not in poster
-    assert "personalities" in poster
+    assert "day streak" not in poster  # a laundry-only card leaves out what they never did
 
 
 def test_art_is_placed_again_when_the_real_font_arrives():
@@ -174,13 +173,12 @@ def test_share_card_shows_unique_places_visited(client):  # noqa: F811
         charge("Wasabi 1", "March 5, 2024, 1:00PM", 10.00),
     ])).get_data(as_text=True)
     poster = html[html.index('class="poster"'):html.index("posterstamp")]
-    assert "<b>2</b><span>places visited</span>" in poster
-    assert "day streak" not in poster
+    assert "<b>2</b><span>places</span>" in poster
 
 
 def test_share_card_says_place_for_just_one(client):  # noqa: F811
     html = upload(client, make_history_pdf([swipe("WorcDC2", "March 4, 2024, 12:00PM")])).get_data(as_text=True)
-    assert "<b>1</b><span>place visited</span>" in html[html.index('class="poster"'):html.index("posterstamp")]
+    assert "<b>1</b><span>place</span>" in html[html.index('class="poster"'):html.index("posterstamp")]
 
 
 def test_pieces_of_one_drawing_are_grouped_in_order():

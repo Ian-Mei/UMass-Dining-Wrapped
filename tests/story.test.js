@@ -81,3 +81,26 @@ test("the keys only stay in a box that really has more to scroll", () => {
   assert.strictEqual(S.canScroll({ scrollHeight: 100, clientHeight: 100, scrollWidth: 90, clientWidth: 50 }), true);
   assert.strictEqual(S.canScroll({ scrollHeight: 100, clientHeight: 100, scrollWidth: 50, clientWidth: 50 }), false);
 });
+
+test("the card style flips between trading card and receipt", () => {
+  assert.strictEqual(C.nextStyle("trading"), "receipt");
+  assert.strictEqual(C.nextStyle("receipt"), "trading");
+});
+
+test("the saved file says which card it is", () => {
+  assert.strictEqual(C.fileName("Fall 26", "receipt"), "umass-dining-wrapped-fall-26-receipt.png");
+});
+
+test("sections spread out to fill the card, within limits", () => {
+  assert.strictEqual(C.sectionGap(600, 400, 3, 20, 200), 100);
+  assert.strictEqual(C.sectionGap(1000, 400, 3, 20, 90), 90);
+  assert.strictEqual(C.sectionGap(410, 400, 3, 20, 90), 20);
+  assert.strictEqual(C.sectionGap(500, 400, 1, 20, 90), 20);
+});
+
+test("a personality name stays on one line when it fits", () => {
+  const measure = (text, size) => text.length * size * 0.5;
+  assert.deepStrictEqual(C.nameLines("AVERAGE JOE", measure, 60, 400, 50), ["AVERAGE JOE"]);
+  assert.deepStrictEqual(C.nameLines("WORCESTER WARRIOR", measure, 60, 300, 50), ["WORCESTER", "WARRIOR"]);
+  assert.deepStrictEqual(C.nameLines("CONNOISSEUR", measure, 60, 100, 50), ["CONNOISSEUR"]);
+});

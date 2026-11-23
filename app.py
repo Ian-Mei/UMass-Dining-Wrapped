@@ -9,6 +9,7 @@ from waitress import serve
 
 from wrapped import ParseError, build_wrapped
 from wrapped.personality import wheel_cards
+from wrapped.share import share_card
 from wrapped.transactions import (
     GET_SMALLEST_LIMIT, MAYBE_CUT_OFF_ROWS, account_history, balance_gaps, clean, count_rows, first_name, merge_rows, printed_date,
     rows_from_pdf, transaction_count,
@@ -181,6 +182,7 @@ def name_on(pdfs):
 def render_wrapped(result, maybe_cut_off=False, name=None):
     return render_template(
         "wrapped.html", w=result, maybe_cut_off=maybe_cut_off, wheel=wheel_cards(result.personalities), count_path="/wrapped", name=name,
+        share=share_card(result),
     )
 
 

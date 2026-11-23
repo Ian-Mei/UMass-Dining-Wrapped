@@ -3,7 +3,7 @@ const Story = (() => {
   const FORWARD = ["ArrowRight", "ArrowDown", "PageDown", " "];
   const BACK = ["ArrowLeft", "ArrowUp", "PageUp"];
   // Clicking these does their own thing instead of moving to the next screen.
-  const INTERACTIVE = "a, button, input, select, textarea, label, .wheelstage, .wheelinfo, .rawdata, .xmonth, .xday-list, .xvisit-list, .xchips, .heatmap, .story-nav";
+  const INTERACTIVE = "a, button, input, select, textarea, label, .wheelstage, .wheelinfo, .rawdata, .xmonth, .xday-list, .xvisit-list, .xchips, .heatmap, .story-nav, .poster, .cardswitch, dialog";
   // Up and down scroll these lists when the keyboard is inside them.
   const SCROLLS_ITSELF = ".wheelinfo, .rawdata, .xday-list, .xvisit-list, .xchips";
   const CLONE_COLORS = ["#afb1ff", "#16d0a6", "#ffe24a", "#fff6e9"];
@@ -199,6 +199,11 @@ const Story = (() => {
       const step = keyStep(event.key, event.shiftKey);
       if (!step) return;
       const target = event.target;
+      if (document.querySelector("dialog[open]")) {
+        // The page stays put behind the preview. Space still presses its buttons.
+        if (step && event.key !== " ") event.preventDefault();
+        return;
+      }
       if (target.closest("input, select, textarea")) return;
       if (event.key === " " && target.closest("a, button")) return;
       const scroller = target.closest(SCROLLS_ITSELF);

@@ -290,31 +290,88 @@ section#personality .wheelscreen h1 { color: var(--fg); }
 .sharebtn:active { transform: scale(.96); }
 .sharebtn:disabled { cursor: wait; opacity: .7; }
 .sharestatus { display: block; min-height: 1.3em; margin-top: 8px; font-size: 13px; font-weight: 700; }
+.cardswitch { display: inline-flex; gap: 4px; margin-bottom: 12px; padding: 4px; border-radius: 24px; background: color-mix(in srgb, var(--fg) 16%, transparent); }
+.cardswitch button { min-height: 38px; padding: 0 16px; border: 0; border-radius: 19px; background: transparent; color: var(--fg); cursor: pointer; font: 800 14px "Archivo", system-ui, sans-serif; }
+.cardswitch button[aria-pressed="true"] { background: var(--fg); color: var(--scene); }
+.js .cardswitch { display: inline-flex; }
+html:not(.js) .cardswitch { display: none; }
+
+/* The two cards are the front and back of one flipping card. */
 .poster {
-  --ph: min(calc(90 * var(--vh)), 150vw);
+  --ph: min(calc(90 * var(--vh)), calc((60vw - 48px) * 16 / 9));
+  position: relative;
   flex: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
   width: calc(var(--ph) * 9 / 16);
   height: var(--ph);
-  padding: calc(var(--ph) * .035) calc(var(--ph) * .03) calc(var(--ph) * .03);
-  overflow: hidden;
-  border: 3px solid #06241e;
-  border-radius: 14px;
-  background: var(--panel);
-  color: #06241e;
-  text-align: center;
-  box-shadow: 8px 8px 0 #06241e;
+  perspective: 1500px;
+  cursor: pointer;
 }
-.poster .text-wrapper-4, .poster .postertop { font-size: calc(var(--ph) * .027); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-.poster img { display: block; height: calc(var(--ph) * .47); width: auto; aspect-ratio: 2 / 3; object-fit: cover; }
-.postername { max-width: 100%; font-size: calc(var(--ph) * .068); font-stretch: 70%; font-weight: 900; line-height: 1; text-transform: uppercase; overflow-wrap: anywhere; }
-.posterstats { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; padding: calc(var(--ph) * .018) 0; border-radius: 8px; background: #06241e; color: var(--panel); }
-.posterstats b { display: block; font-size: calc(var(--ph) * .048); font-stretch: 72%; font-weight: 900; line-height: 1; }
-.posterstats span { display: block; margin-top: .3em; font-size: calc(var(--ph) * .019); font-weight: 700; }
-.posterstamp { font-size: calc(var(--ph) * .02); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.flipper { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .75s cubic-bezier(.3, .9, .3, 1); }
+.poster[data-style="receipt"] .flipper { transform: rotateY(180deg); }
+.face { position: absolute; inset: 0; overflow: hidden; border-radius: 14px; backface-visibility: hidden; container-type: size; border: 3px solid #06241e; box-shadow: 6px 6px 0 #06241e; text-align: left; }
+.face.receipt { transform: rotateY(180deg); }
+.face img { display: block; object-fit: contain; background: white; }
+.face .in { box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; height: 100%; min-height: 0; }
+.face .row { display: grid; align-items: center; }
+.face b { font-weight: 900; }
+
+.face.trading { background: var(--tone); color: #1c0d0a; font-family: "Archivo", Impact, sans-serif; }
+.trading .in { height: calc(100% - 6.4cqw); margin: 3.2cqw; padding: 4cqw; border-radius: 3cqw; background: #fff6e9; }
+.trading .top { display: flex; justify-content: space-between; font-size: 3.5cqw; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.trading .hero { display: flex; align-items: center; gap: 3.5cqw; }
+.trading .hero img { flex: none; width: 33cqw; height: 45cqw; border: .7cqw solid #1c0d0a; border-radius: 2cqw; }
+.trading .hero > div { flex: 1; min-width: 0; }
+.trading .tag { font-size: 2.8cqw; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.trading .who { margin: .8cqw 0 1.6cqw; font-size: 7.7cqw; font-stretch: 66%; font-weight: 900; line-height: .95; text-transform: uppercase; }
+.trading .chip { display: inline-block; padding: .8cqw 2.2cqw; border-radius: 3cqw; background: var(--tone); font-size: 2.9cqw; font-weight: 800; }
+.trading .stats { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 2.3cqw 0; border-radius: 2cqw; background: #1c0d0a; color: #fff6e9; text-align: center; }
+.trading .stats b { display: block; font-size: 7.2cqw; font-stretch: 68%; line-height: 1; }
+.trading .stats span { display: block; margin-top: .6cqw; font-size: 2.35cqw; font-weight: 700; }
+.trading h4 { margin: 0 0 1cqw; font-size: 3.2cqw; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.trading .row { grid-template-columns: 27cqw 1fr 8cqw; gap: 1.5cqw; margin-bottom: .55cqw; font-size: 3.45cqw; font-weight: 700; }
+.trading .row.plain { grid-template-columns: 1fr auto; }
+.trading .row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trading .row b { text-align: right; }
+.trading .bar { display: block; height: 2.5cqw; border-radius: 1.2cqw; background: var(--tone); }
+.trading .tiles { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 1.1cqw; text-align: center; }
+.trading .tiles div { padding: 1.25cqw 0; border-radius: 1.4cqw; background: color-mix(in srgb, var(--tone) 30%, #fff6e9); }
+.trading .tiles b { display: block; font-size: 5.6cqw; font-stretch: 68%; line-height: 1; }
+.trading .tiles span { display: block; margin-top: .35cqw; font-size: 2.3cqw; font-weight: 700; }
+.trading .foot { font-size: 2.45cqw; font-weight: 800; letter-spacing: .05em; text-align: center; text-transform: uppercase; }
+
+.face.receipt { background: var(--tone); color: #1c1c1c; }
+.face.receipt, .face.receipt * { font-family: "Space Mono", Consolas, monospace; }
+.receipt .in { height: calc(100% - 5.2cqw); margin: 2.6cqw; padding: 3.6cqw 4cqw 4.6cqw; background: #fffdf6; clip-path: polygon(0 0, 100% 0, 100% 98.6%, 95% 100%, 90% 98.6%, 85% 100%, 80% 98.6%, 75% 100%, 70% 98.6%, 65% 100%, 60% 98.6%, 55% 100%, 50% 98.6%, 45% 100%, 40% 98.6%, 35% 100%, 30% 98.6%, 25% 100%, 20% 98.6%, 15% 100%, 10% 98.6%, 5% 100%, 0 98.6%); }
+.receipt .brand { font-size: 6cqw; font-weight: 700; line-height: 1.02; text-align: center; }
+.receipt .meta { margin: .6cqw 0; font-size: 3.15cqw; font-weight: 700; text-align: center; }
+.receipt .hero { display: flex; align-items: center; gap: 3cqw; padding: 1cqw 0; border-block: .4cqw dashed #1c1c1c; }
+.receipt .hero img { flex: none; width: 17cqw; height: 23cqw; background: transparent; }
+.receipt .tag { font-size: 3.3cqw; font-weight: 700; }
+.receipt .who { font-size: 6.2cqw; font-weight: 700; line-height: 1.05; text-transform: uppercase; }
+.receipt h4 { margin: 0 0 .3cqw; font-size: 3.9cqw; font-weight: 700; text-align: center; }
+.receipt .row { display: flex; justify-content: space-between; gap: 1cqw; font-size: 4.25cqw; font-weight: 700; line-height: 1.24; }
+.receipt .row span { flex: 1; overflow: hidden; white-space: nowrap; }
+.receipt .row span::after { content: " ................................................"; opacity: .38; }
+.receipt .row b { font-weight: 700; text-align: right; }
+.receipt .totals { padding-top: .8cqw; border-top: .4cqw dashed #1c1c1c; }
+.receipt .total { display: flex; justify-content: space-between; font-size: 5.6cqw; font-weight: 700; }
+.receipt .sub { display: flex; justify-content: space-between; font-size: 3.75cqw; font-weight: 700; line-height: 1.25; }
+.receipt .code { height: 4.2cqw; background: repeating-linear-gradient(90deg, #1c1c1c 0 .5cqw, transparent .5cqw 1cqw, #1c1c1c 1cqw 2.1cqw, transparent 2.1cqw 2.8cqw); }
+.receipt .foot { margin: .7cqw 0 0; font-size: 3cqw; font-weight: 700; text-align: center; }
+
+/* The preview: see the card, then copy or save it. */
+.sharedialog { margin: auto; width: min(760px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 18px; overflow: auto; border: 0; border-radius: 16px; background: #fff6e9; color: #2b1b1b; font-family: "Archivo", system-ui, sans-serif; }
+.sharedialog[open] { display: flex; gap: 22px; align-items: center; }
+.sharedialog::backdrop { background: rgba(10, 8, 14, .78); }
+.sharedialog > img { flex: none; width: auto; height: min(78dvh, 620px); aspect-ratio: 9 / 16; border-radius: 10px; box-shadow: 0 6px 22px rgba(0, 0, 0, .3); }
+.shareactions { display: flex; flex: 1; flex-direction: column; gap: 9px; min-width: 0; }
+.shareactions h3 { margin: 0; font-size: 30px; font-stretch: 72%; font-weight: 900; line-height: 1; text-transform: uppercase; }
+.shareactions p { margin: 0 0 6px; font-size: 15px; font-weight: 600; line-height: 1.3; }
+.shareactions button { min-height: 46px; border: 2px solid #2b1b1b; border-radius: 23px; background: transparent; color: #2b1b1b; cursor: pointer; font: 800 16px "Archivo", system-ui, sans-serif; }
+.shareactions button[hidden] { display: none; }
+.shareactions .sharecopy { background: #2b1b1b; color: #fff6e9; }
+.shareactions .shareclose { border-color: transparent; }
+.shareactions .sharemessage { min-height: 1.3em; margin: 2px 0 0; color: #0b6b52; font-size: 14px; font-weight: 700; text-align: center; }
 
 /* ---- The end ---- */
 section#end h1 { font-size: min(3.6vw, calc(6.8 * var(--vh))); text-align: center; text-transform: none; }
@@ -392,7 +449,14 @@ html.blend section.in .container, html.blend section.in .shareline {
   .pitch { width: auto; text-align: center; }
   .pitch h2, .pitch p { display: none; }
   .sharestatus { min-height: 0; }
-  .poster { --ph: min(calc(82 * var(--vh)), 150vw); box-shadow: 5px 5px 0 #06241e; }
+  .poster { --ph: min(calc(74 * var(--vh)), 150vw); }
+  .face { box-shadow: 5px 5px 0 #06241e; }
+  .pitch { display: flex; flex-direction: column; align-items: center; }
+  .cardswitch { margin-bottom: 6px; }
+  .sharedialog[open] { flex-direction: column; gap: 12px; }
+  .sharedialog > img { height: min(58dvh, 520px); }
+  .shareactions { width: 100%; }
+  .shareactions h3, .shareactions p:not(.sharemessage) { display: none; }
   section#end h1 { font-size: 6.4vw; }
 }
 
@@ -400,7 +464,7 @@ html.blend section.in .container, html.blend section.in .shareline {
   .js section:not(.in) .container, .js section:not(.in) .shareline { opacity: 1; }
   .js section:not(.in) .sprite { transform: none; }
   .in .sprite, .in .container, .in .shareline, .in .big .clone, .in .big.cloned { animation: none; }
-  .sharebtn { transition: none; }
+  .sharebtn, .flipper { transition: none; }
   .art { opacity: 1; scale: none; }
   #wheel.wheel-js.landed .wheelstage, #wheel.wheel-js:not(.landed) .wheelstage { transform: none; transition: none; }
   #wheel.wheel-js.landed .wheelinfo, #wheel.wheel-js:not(.landed) .wheelinfo { translate: none; transition: none; }
