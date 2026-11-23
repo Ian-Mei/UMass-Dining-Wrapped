@@ -585,6 +585,15 @@
   margin: var(--dl-space-space-halfunit) 0;
   cursor: grab;
 }
+.home-demo { display: none; margin: var(--dl-space-space-unit) 0 0; }
+.home-demo img { display: block; width: 100%; height: auto; border-radius: 14px; }
+@media (min-width: 768px) {
+  .home-demo { display: block; }
+}
+@media (min-width: 992px) {
+  .home-howto { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--dl-space-space-twounits); align-items: center; max-width: 1120px; }
+  .home-demo { margin: 0; }
+}
 .home-error {
   margin-top: var(--dl-space-space-unit);
   padding: var(--dl-space-space-unit);

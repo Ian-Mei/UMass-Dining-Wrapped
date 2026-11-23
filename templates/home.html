@@ -86,6 +86,7 @@
                 <p class="home-error">{{ error }}</p>
               {% endif %}
               <div class="home-howto">
+                <div class="home-steps">
                 <h2 class="heading2">One click from GET</h2>
                 <ol>
                   <li>Drag this button to your bookmarks bar:
@@ -97,6 +98,15 @@
                   <li>Open <a href="https://get.cbord.com/umass/full/funds_home.php" target="_blank" rel="noopener">GET</a> and log in like you normally do.</li>
                   <li>Click the <b>Dining Wrapped</b> bookmark while you're on GET.</li>
                 </ol>
+                </div>
+                <figure class="home-demo">
+                  <picture>
+                    <source media="(max-width: 767px)" srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
+                    <source media="(prefers-reduced-motion: reduce)" srcset="{{ url_for('static', filename='styles/imgs/how-to-still.png') }}">
+                    <img src="{{ url_for('static', filename='styles/imgs/how-to.gif') }}" width="640" height="440" loading="lazy"
+                         alt="A cursor drags the Dining Wrapped button to the bookmarks bar, logs into GET, clicks the bookmark, and the Wrapped appears.">
+                  </picture>
+                </figure>
               </div>
             </div>
           </div>
