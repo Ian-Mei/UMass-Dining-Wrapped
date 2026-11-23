@@ -127,3 +127,10 @@ def test_one_screens_art_is_gone_before_the_next_appears():
     for rule in (art, content):
         fade = float(re.search(r"opacity: calc\(1 - var\(--away, 0\) \* ([\d.]+)\)", rule).group(1))
         assert fade >= 2  # fully faded by the halfway point
+
+
+def test_short_laptops_put_the_personality_card_beside_the_wheel():
+    block = story_css().split("@media (min-width: 761px) and (max-height: 820px)")[1]
+    assert "grid-template-columns" in block
+    assert "#personality .wheelinfo" in block
+    assert "overflow-y: auto" in block  # a very long blurb scrolls inside the card

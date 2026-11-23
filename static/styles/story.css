@@ -246,6 +246,35 @@ section#personality .wheelscreen h1 { color: var(--fg); }
 #personality .wheelmore { color: #16d0a6; }
 #personality .wheelinfo .stamp { background: #1f1f1f; color: #c9c9d6; }
 
+/* Short laptop windows: the wheel and its card side by side, so the card always fits. */
+@media (min-width: 761px) and (max-height: 820px) {
+  #personality::after { display: none; }
+  #personality .wheelscreen {
+    --card-w: clamp(96px, calc(46 * var(--vh)), 220px);
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr);
+    grid-template-rows: auto auto;
+    column-gap: 3vw;
+    align-items: center;
+    width: min(1180px, 94vw);
+  }
+  section#personality .wheelscreen h1 {
+    grid-column: 1 / -1;
+    justify-self: center;
+    margin: 0 0 8px;
+    font-size: min(3vw, calc(7 * var(--vh)));
+  }
+  #personality .wheelstage { grid-column: 1; grid-row: 2; }
+  #personality .wheelinfo {
+    grid-column: 2;
+    grid-row: 2;
+    width: 100%;
+    max-height: calc(100 * var(--vh) - 90px);
+    margin: 0;
+    overflow-y: auto;
+  }
+}
+
 /* ---- The share card ---- */
 .shareline { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 6vw; width: 100%; }
 .pitch { width: min(34vw, 460px); }
