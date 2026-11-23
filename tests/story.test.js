@@ -46,3 +46,26 @@ test("laptops save the card; only phones open the share sheet", () => {
   assert.strictEqual(C.usesShareSheet(true, true), true);
   assert.strictEqual(C.usesShareSheet(false, true), false);
 });
+
+test("the background holds each color, then blends to the next", () => {
+  const colors = ["#111111", "#222222", "#333333"];
+  const tops = [0, 100, 200];
+  assert.strictEqual(S.backdropColor(colors, tops, 0), "#111111");
+  assert.strictEqual(S.backdropColor(colors, tops, 100), "#222222");
+  assert.strictEqual(S.backdropColor(colors, tops, 50), "color-mix(in oklab, #222222 50.0%, #111111)");
+  assert.strictEqual(S.backdropColor(colors, tops, 125), "color-mix(in oklab, #333333 15.6%, #222222)");
+});
+
+test("scrolling past either end keeps the end color", () => {
+  const colors = ["#111111", "#222222"];
+  assert.strictEqual(S.backdropColor(colors, [0, 100], -40), "#111111");
+  assert.strictEqual(S.backdropColor(colors, [0, 100], 180), "#222222");
+});
+
+test("a screen's offset runs from -1 before it arrives to 1 after it's passed", () => {
+  assert.strictEqual(S.screenOffset(100, 100, 100), 0);
+  assert.strictEqual(S.screenOffset(150, 100, 100), 0.5);
+  assert.strictEqual(S.screenOffset(50, 100, 100), -0.5);
+  assert.strictEqual(S.screenOffset(900, 100, 100), 1);
+  assert.strictEqual(S.screenOffset(-900, 100, 100), -1);
+});

@@ -213,8 +213,8 @@ const Explorer = (() => {
     }
     if (data.places.length) selectPlace(data.places[0].name);
 
-    // "See every visit" links from the other screens. (Days aren't linked to: jumping ahead to
-    // Explore your days would skip the screens in between.)
+    // Place links in All your data. (Stats don't link here: jumping ahead would skip the
+    // screens and animation in between.)
     document.addEventListener("click", (event) => {
       const link = event.target.closest("[data-explore-place]");
       if (!link) return;

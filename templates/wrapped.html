@@ -94,7 +94,6 @@
                 <p class="big">{{ bw.top.swipes }}</p>
                 <p class="caption">meal swipe{{ "s" if bw.top.swipes != 1 }} this semester</p>
                 <p class="remark">{{ bw.remark }}</p>
-                {% if h.explorer.swipes_too and bw.top.place in explorable %}<a class="explore-link" href="#places" data-explore-place="{{ bw.top.place }}">See every visit &rarr;</a>{% endif %}
               </div>
               <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
             </div>
@@ -134,7 +133,6 @@
                 <p class="big">{{ h.harvest.swipes }}</p>
                 <p class="caption">meal swipes at Harvest Market</p>
                 <p class="remark">{{ h.harvest.remark }}</p>
-                {% if h.explorer.swipes_too and h.harvest.place in explorable %}<a class="explore-link" href="#places" data-explore-place="{{ h.harvest.place }}">See every visit &rarr;</a>{% endif %}
               </div>
               <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
             </div>
@@ -177,12 +175,11 @@
               <div class="listheader"><h1 class="title">Top Spots</h1></div>
               <div class="list">
                 {% for name, vendor in w.vendors.head(3).iterrows() %}
-                {% if name in explorable %}<a class="listitem explorable" href="#places" data-explore-place="{{ name }}">{% else %}<div class="listitem">{% endif %}
+                <div class="listitem">
                   <span class="itemname">{{ loop.index }}. {{ name }}<small>{{ vendor.visits|int }} visit{{ "s" if vendor.visits != 1 }}</small></span>
                   <span class="itemvalue">${{ "%.2f"|format(vendor.spent) }}</span>
-                {% if name in explorable %}</a>{% else %}</div>{% endif %}
+                </div>
                 {% endfor %}
-                {% if explorable %}<p class="caption">Tap a spot to see every visit</p>{% endif %}
               </div>
               <div class="stamp">UMass Dining Wrapped &middot; {{ w.semester_short }}</div>
             </div>

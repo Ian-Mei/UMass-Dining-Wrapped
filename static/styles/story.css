@@ -24,7 +24,7 @@ section#harvest, section#clock, section#card, section#personality, section#end {
   position: relative;
   overflow: hidden;
   padding: 16px;
-  background: var(--scene);
+  background: var(--section-bg, var(--scene));
   color: var(--fg);
 }
 section .container { position: relative; z-index: 1; width: 100%; }
@@ -131,14 +131,6 @@ section.stat h2.stat-intro {
   font-size: clamp(14px, min(1.3vw, calc(2.5 * var(--vh))), 18px);
   font-weight: 600;
 }
-.statcard .explore-link {
-  display: inline-block;
-  min-height: 32px;
-  margin: 10px 0 0;
-  color: inherit;
-  font-size: 15px;
-  text-decoration: underline;
-}
 .listbox .list { padding: 0; background: transparent; border-radius: 0; row-gap: 0; }
 .listbox .list .listitem {
   grid-template-columns: minmax(0, 1fr) auto;
@@ -219,7 +211,7 @@ section#calendar .big { font-size: min(13vw, calc(25 * var(--vh))); }
 .xcell.busiest { background: #ff5b49; color: #260b07; }
 .xgold { background: #ff5b49; }
 .cell.streak { box-shadow: inset 0 0 0 2px var(--panel-ink); }
-.xday-nav button, .explore-link { color: var(--accent, #722d65); }
+.xday-nav button { color: #722d65; }
 section#places .xchip.on { background: var(--scene); color: var(--fg); }
 
 @media (min-width: 761px) {
@@ -320,11 +312,33 @@ section#end a { color: inherit; text-decoration: underline; }
 .story-nav button:hover { background: #333; }
 .story-nav button:disabled { cursor: default; opacity: .35; }
 
+/* ---- Moving between screens: story.js blends one fixed color behind them all ---- */
+html.blend { --section-bg: transparent; }
+.story-backdrop {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: -1;
+  height: 100vh;
+  height: 100lvh;
+  pointer-events: none;
+}
+/* Pinned to the window, because the art is cut off at the edges it was drawn against. */
+html.blend section .art {
+  position: fixed;
+  inset: 0;
+  opacity: calc(1 - var(--away, 0) * 1.3);
+  scale: calc(1 + var(--away, 0) * .06);
+  will-change: opacity, scale;
+}
+html.blend section.in .container, html.blend section.in .shareline {
+  opacity: calc(1 - var(--away, 0) * 1.7);
+}
+
 /* ---- Motion: only once JavaScript is running ---- */
 .js section:not(.in) .container, .js section:not(.in) .shareline { opacity: 0; }
 .js section:not(.in) .sprite { transform: scale(0); }
 .in .sprite { animation: art-grow .8s cubic-bezier(.2, 1.3, .4, 1) both, art-breathe 3.6s ease-in-out infinite alternate; animation-delay: calc(var(--d) * 70ms), calc(1s + var(--d) * 220ms); }
-.in .container, .in .shareline { animation: rise-in .55s cubic-bezier(.2, .9, .25, 1) .2s both; }
+.in .container, .in .shareline { animation: rise-in .55s cubic-bezier(.2, .9, .25, 1) .2s backwards; }
 .in .big .clone { animation: num-collapse 1.15s cubic-bezier(.7, 0, .2, 1) .12s both; }
 .in .big.cloned { animation: num-hold 1.15s steps(1) both; }
 @keyframes art-grow { from { transform: scale(0); } to { transform: scale(1); } }
@@ -364,4 +378,5 @@ section#end a { color: inherit; text-decoration: underline; }
   .js section:not(.in) .sprite { transform: none; }
   .in .sprite, .in .container, .in .shareline, .in .big .clone, .in .big.cloned { animation: none; }
   .sharebtn { transition: none; }
+  .art { opacity: 1; scale: none; }
 }

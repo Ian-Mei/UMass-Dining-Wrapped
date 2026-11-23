@@ -89,3 +89,32 @@ def test_busiest_day_note_names_its_new_color():
 def test_list_rows_keep_name_and_value_on_one_line():
     assert ".statcard .listitem .itemname" in story_css()
     assert "grid-column: auto" in story_css()
+
+
+def test_stats_dont_link_ahead_past_the_animation(client):  # noqa: F811
+    html = upload(client, make_history_pdf(
+        [swipe("Wasabi 1", f"03/{day:02d}/24 12:00:00 PM") for day in range(4, 12)]
+        + [swipe("Harvest Market 1", f"03/{day:02d}/24 06:00:00 PM") for day in range(4, 12)]
+        + [charge("Tavola 1", "03/12/24 01:00:00 PM", 10.00)]
+    )).get_data(as_text=True)
+    before_card = html[:html.index('id = "card"')]
+    assert "data-explore-place" not in before_card
+    assert "Tap a spot" not in html
+    assert "See every visit" not in html
+
+
+def test_screens_show_the_blending_backdrop_only_when_it_runs():
+    css = story_css()
+    assert "background: var(--section-bg, var(--scene));" in css
+    assert "html.blend" in css
+    assert "--section-bg: transparent" in css
+    assert ".story-backdrop" in css
+    reduced = css.split("@media (prefers-reduced-motion: reduce)")[1]
+    assert ".art" in reduced
+
+
+def test_art_crossfades_in_place_so_its_cut_edges_never_show():
+    rule = re.search(r"html\.blend section \.art \{([^}]*)\}", story_css()).group(1)
+    assert "position: fixed" in rule
+    assert "translate" not in rule
+    assert "scale: calc(1 + var(--away, 0)" in rule  # only ever larger, so edges stay off-screen
