@@ -1,0 +1,48 @@
+// Run with: node --test tests/*.test.js
+const test = require("node:test");
+const assert = require("node:assert");
+const S = require("../static/scripts/story.js");
+const C = require("../static/scripts/share-card.js");
+
+test("arrow keys, space and page keys move one screen", () => {
+  for (const key of ["ArrowRight", "ArrowDown", "PageDown", " "]) assert.strictEqual(S.keyStep(key), 1);
+  for (const key of ["ArrowLeft", "ArrowUp", "PageUp"]) assert.strictEqual(S.keyStep(key), -1);
+  assert.strictEqual(S.keyStep("a"), 0);
+});
+
+test("moving stops at the first and last screen", () => {
+  assert.strictEqual(S.targetIndex(3, 1, 10), 4);
+  assert.strictEqual(S.targetIndex(0, -1, 10), 0);
+  assert.strictEqual(S.targetIndex(9, 1, 10), 9);
+});
+
+test("text shrinks only as far as it needs to fit", () => {
+  const measure = (text, size) => text.length * size * 0.5;
+  assert.strictEqual(C.fitSize(measure, "Joe", 100, 900), 100);
+  const size = C.fitSize(measure, "A Very Long Personality Name", 100, 500);
+  assert.ok(size < 100 && measure("A Very Long Personality Name", size) <= 500);
+});
+
+test("the saved file is named for the semester", () => {
+  assert.strictEqual(C.fileName("Fall 26"), "umass-dining-wrapped-fall-26.png");
+});
+
+test("art is clear of a block only with a gap around it", () => {
+  const art = { left: 0, top: 0, right: 100, bottom: 100 };
+  assert.strictEqual(S.clearOf(art, [{ left: 120, top: 0, right: 200, bottom: 50 }], 10), true);
+  assert.strictEqual(S.clearOf(art, [{ left: 105, top: 0, right: 200, bottom: 50 }], 10), false);
+  assert.strictEqual(S.clearOf(art, [], 10), true);
+});
+
+test("art takes the largest size that's clear, or none", () => {
+  const clearAt = (limit) => (fit) => fit <= limit;
+  assert.strictEqual(S.bestFit([1, 0.8, 0.6], clearAt(1)), 1);
+  assert.strictEqual(S.bestFit([1, 0.8, 0.6], clearAt(0.7)), 0.6);
+  assert.strictEqual(S.bestFit([1, 0.8, 0.6], clearAt(0.5)), null);
+});
+
+test("laptops save the card; only phones open the share sheet", () => {
+  assert.strictEqual(C.usesShareSheet(true, false), false);
+  assert.strictEqual(C.usesShareSheet(true, true), true);
+  assert.strictEqual(C.usesShareSheet(false, true), false);
+});

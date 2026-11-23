@@ -146,17 +146,18 @@ def test_heights_inside_screens_fit_with_the_address_bar_showing():
     assert re.search(r"@supports \(height: 1svh\)\s*\{\s*:root \{ --vh: 1svh; \}", CSS_NO_COMMENTS)
     for selector, body in rules():
         if selector != "section" and not selector.startswith(":root"):
-            assert not re.search(r"\d(vh|svh|dvh)", body), selector
+            assert not re.search(r"\d(vh|svh|dvh)\b", body), selector
 
 
-def test_background_pictures_are_hidden_from_screen_readers(client):  # noqa: F811
+def test_decorative_art_is_hidden_from_screen_readers(client):  # noqa: F811
     page = upload(client, make_history_pdf([
         swipe("WorcDC2", "March 4, 2024, 12:00PM"),
         charge("Wasabi 1", "March 5, 2024, 12:00PM", 10.00),
     ])).get_data(as_text=True)
-    backgrounds = re.findall(r'<img[^>]*class="background"[^>]*>', page)
-    assert backgrounds
-    for img in backgrounds:
+    sprites = re.findall(r'<img class="sprite[^>]*>', page)
+    assert sprites
+    for img in sprites:
         assert 'alt=""' in img, img
+    assert '<div class="art" aria-hidden="true">' in page
     for img in re.findall(r"<img\b[^>]*>", page):
         assert "alt=" in img, img

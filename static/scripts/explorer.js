@@ -95,7 +95,7 @@ const Explorer = (() => {
     const dayList = daysCard.querySelector(".xday-list");
     const prevDay = daysCard.querySelector(".xprev");
     const nextDay = daysCard.querySelector(".xnext");
-    // Open on their busiest day (gold on the map), or else the latest one.
+    // Open on their busiest day (coral on the map), or else the latest one.
     let selected = byDay.has(data.busiest) ? data.busiest : days[days.length - 1];
     let shown = parseDay(selected);
     // The month arrows stop at the first and last month with purchases.
@@ -151,7 +151,7 @@ const Explorer = (() => {
 
     if (data.busiest) {
       const note = daysCard.querySelector(".xbusiest-note");
-      note.replaceChildren(el("span", "xgold"), document.createTextNode(` Gold: your busiest day (${dayLabel(data.busiest)})`));
+      note.replaceChildren(el("span", "xgold"), document.createTextNode(` Coral: your busiest day (${dayLabel(data.busiest)})`));
       note.hidden = false;
     }
 
