@@ -195,3 +195,19 @@ def test_blue_wall_bars_use_a_visible_periwinkle():
     bar = re.search(r"\.statcard \.barrow \.bar \{([^}]*)\}", story_css()).group(1)
     color = re.search(r"background:\s*(#[0-9a-f]{6})", bar).group(1)
     assert contrast(color, "#fff6e9") >= 3
+
+
+def test_share_card_shows_unique_places_visited(client):  # noqa: F811
+    html = upload(client, make_history_pdf([
+        swipe("WorcDC2", "March 4, 2024, 12:00PM"),
+        swipe("WorcDC2", "March 5, 2024, 12:00PM"),
+        charge("Wasabi 1", "March 5, 2024, 1:00PM", 10.00),
+    ])).get_data(as_text=True)
+    poster = html[html.index('class="poster"'):html.index("posterstamp")]
+    assert "<b>2</b><span>places visited</span>" in poster
+    assert "day streak" not in poster
+
+
+def test_share_card_says_place_for_just_one(client):  # noqa: F811
+    html = upload(client, make_history_pdf([swipe("WorcDC2", "March 4, 2024, 12:00PM")])).get_data(as_text=True)
+    assert "<b>1</b><span>place visited</span>" in html[html.index('class="poster"'):html.index("posterstamp")]

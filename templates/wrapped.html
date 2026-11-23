@@ -387,7 +387,7 @@
         <section id = "card">
           {{ art("teal") }}
           {% set top_stats = [[w.total_swipes|string, "swipes"], ["$%.0f"|format(w.total_spent), "dollars"]] %}
-          {% if h.streak.days %}{% set top_stats = top_stats + [[h.streak.days|string, "day streak"]] %}{% else %}{% set top_stats = top_stats + [[w.personalities|length|string, "personalities"]] %}{% endif %}
+          {% if w.places_tried %}{% set top_stats = top_stats + [[w.places_tried|string, "place visited" if w.places_tried == 1 else "places visited"]] %}{% else %}{% set top_stats = top_stats + [[w.personalities|length|string, "personalities"]] %}{% endif %}
           {% set picture = url_for('static', filename='styles/imgs/personalities/' + w.personality.image + '.png') %}
           <div class="shareline">
             <div class="pitch">
