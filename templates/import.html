@@ -16,10 +16,19 @@
         color: white;
         font: 20px "comic sans ms", sans-serif;
       }
+      /* In the iPhone Shortcut's box on the GET page. */
+      #boxtitle { display: none; }
+      .frame, .frame body { background: #1b1236; }
+      .frame #tv-screen { display: none; }
+      .frame #boxtitle { display: block; padding: 16px 48px 0 16px; color: white; font: 700 16px -apple-system, sans-serif; }
+      #track { height: 8px; margin-top: 10px; border-radius: 4px; background: #3a2d62; }
+      #fill { width: 0; height: 100%; background: #16d0a6; transition: width .25s; }
+      .frame #status { position: static; padding: 8px 16px 0; text-align: left; font: 500 14px -apple-system, sans-serif; }
     </style>
   </head>
   <body>
     <canvas id="tv-screen"></canvas>
+    <div id="boxtitle">Grabbing your history<div id="track"><div id="fill"></div></div></div>
     <p id="status">Waiting for GET&hellip;</p>
     <form id="upload" method="post" action="{{ url_for('wrapped') }}" enctype="multipart/form-data" hidden>
       <input type="file" name="pdfs" multiple>
@@ -38,8 +47,25 @@
       const REPLY_TIMEOUT_MS = 90000;
       const statusEl = document.getElementById("status");
       const form = document.getElementById("upload");
+      // The bookmarklet opens this page in a new tab; the iPhone Shortcut puts it in a box on GET.
+      const IN_FRAME = !window.opener && window.parent !== window;
+      const HOME = window.opener || (IN_FRAME ? window.parent : null);
+      const RETRY = IN_FRAME ? "run the Shortcut again" : "click the bookmark again";
 
-      startLoadingScreen(document.getElementById("tv-screen"), {{ url_for('static', filename='imgs/umass.png')|tojson }});
+      if (IN_FRAME) document.documentElement.classList.add("frame");
+      else startLoadingScreen(document.getElementById("tv-screen"), {{ url_for('static', filename='imgs/umass.png')|tojson }});
+
+      // Splitting a full window adds to the total, so keep the bar at its furthest point.
+      let furthest = 0;
+      const showProgress = (done, total) => {
+        if (!IN_FRAME) {
+          statusEl.textContent = `Downloading your history from GET (${done}/${total})`;
+          return;
+        }
+        statusEl.textContent = `${done} of ${total}. Keep this page open.`;
+        furthest = Math.max(furthest, done / total);
+        document.getElementById("fill").style.width = `${furthest * 100}%`;
+      };
 
       const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
       const pending = new Map();
@@ -47,12 +73,12 @@
 
       window.addEventListener("message", (event) => {
         // Only accept data from the GET tab that opened us.
-        if (event.origin !== GET_ORIGIN || event.source !== window.opener) return;
+        if (event.origin !== GET_ORIGIN || event.source !== HOME) return;
         const { type, id, pdf, message } = event.data || {};
         const request = pending.get(id);
         if (!request) return;
         if (type === "ack") {
-          request.wait(REPLY_TIMEOUT_MS, "GET is taking too long to respond. Give it a minute and click the bookmark again.");
+          request.wait(REPLY_TIMEOUT_MS, `GET is taking too long to respond. Give it a minute and ${RETRY}.`);
           return;
         }
         request.wait(null);
@@ -75,8 +101,10 @@
           }, ms);
         };
         pending.set(id, { resolve, reject, wait });
-        wait(ACK_TIMEOUT_MS, "The GET tab isn't answering. Keep it open, drag the newest Dining Wrapped button from the home page to your bookmarks, and try again.");
-        window.opener.postMessage({ type: "fetch", id, start: HistoryWindows.fmt(w.start), end: HistoryWindows.fmt(w.end) }, GET_ORIGIN);
+        wait(ACK_TIMEOUT_MS, IN_FRAME
+          ? "The GET page isn't answering. Run the Shortcut again."
+          : "The GET tab isn't answering. Keep it open, drag the newest Dining Wrapped button from the home page to your bookmarks, and try again.");
+        HOME.postMessage({ type: "fetch", id, start: HistoryWindows.fmt(w.start), end: HistoryWindows.fmt(w.end) }, GET_ORIGIN);
       });
 
       const isFull = async (pdf) => {
@@ -91,7 +119,7 @@
         const pdfs = [];
         let done = 0;
         while (queue.length) {
-          statusEl.textContent = `Downloading your history from GET (${done}/${done + queue.length})`;
+          showProgress(done, done + queue.length);
           const w = queue.shift();
           const pdf = await download(w);
           // A full window may be missing its oldest rows, so fetch it again in halves.
@@ -102,6 +130,11 @@
         }
 
         statusEl.textContent = "Crunching the numbers…";
+        if (IN_FRAME) {
+          document.getElementById("fill").style.width = "100%";
+          HOME.postMessage({ type: "done", pdfs }, GET_ORIGIN, pdfs);
+          return;
+        }
         const files = new DataTransfer();
         pdfs.forEach((pdf, i) => {
           files.items.add(new File([pdf], `history-${i}.pdf`, { type: "application/pdf" }));
@@ -110,7 +143,7 @@
         form.submit();
       };
 
-      if (window.opener) {
+      if (HOME) {
         run().catch((err) => { statusEl.textContent = err.message; });
       } else {
         statusEl.innerHTML = 'This page opens from the bookmarklet. <a href="{{ url_for("home") }}" style="color:white">Go back</a>';

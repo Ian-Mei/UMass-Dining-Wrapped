@@ -58,8 +58,8 @@ def test_rows_rejects_garbage(client):
 def test_wrapped_requires_a_file(client):
     response = client.post("/wrapped", data={}, content_type="multipart/form-data")
     assert response.status_code == 400
-    # The home page has no file picker, so point back to the bookmark.
-    assert "Dining Wrapped bookmark" in response.get_data(as_text=True)
+    # The home page has no file picker, so point back to GET (bookmark or Shortcut).
+    assert "Run Dining Wrapped again" in response.get_data(as_text=True)
 
 
 def test_wrapped_rejects_garbage(client):
