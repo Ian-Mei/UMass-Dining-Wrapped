@@ -51,7 +51,8 @@ def test_iphone_steps_link_to_the_shortcut(client, monkeypatch):
     assert "Allow Running Scripts" in steps
     assert "older iPhones: Settings &rsaquo; Shortcuts &rsaquo; Advanced" in steps
     # Newer iOS puts Share in the menu by the address and the Shortcut under View More.
-    assert ("tap Share (on newer iPhones it's in the menu by the address), then <b>Dining Wrapped</b> "
+    # The Shortcut is named UMass Dining Wrapped; the laptop bookmark stays Dining Wrapped.
+    assert ("tap Share (on newer iPhones it's in the menu by the address), then <b>UMass Dining Wrapped</b> "
             "(under View More on newer iPhones)") in steps
     assert "Tap <b>Allow</b> the first time." in steps
     assert "get.cbord.com/umass/full/funds_home.php" in steps
@@ -91,7 +92,7 @@ def test_iphone_steps_show_a_gif_of_the_shortcut(client, monkeypatch):
     assert "imgs/how-to-iphone.gif" in demo
     assert 'media="(prefers-reduced-motion: reduce)"' in demo and "imgs/how-to-iphone-still.png" in demo
     assert 'loading="lazy"' in demo  # laptops never show this section, so they skip it
-    assert 'alt="How it works on iPhone: in Safari on GET' in demo
+    assert 'alt="How it works on iPhone: in Safari on GET, tap Share, then UMass Dining Wrapped, then Allow' in demo
     # Below the install button, inside the step it shows, so phones reach Add to iPhone first.
     assert steps.index("Add to iPhone") < steps.index('class="home-iphone-demo"')
     assert steps.index("(under View More on newer iPhones)") < steps.index('class="home-iphone-demo"')
