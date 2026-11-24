@@ -50,7 +50,9 @@ def test_iphone_steps_link_to_the_shortcut(client, monkeypatch):
     assert f'href="{ICLOUD}"' in steps and "Add to iPhone" in steps
     assert "Allow Running Scripts" in steps
     assert "older iPhones: Settings &rsaquo; Shortcuts &rsaquo; Advanced" in steps
-    assert "tap Share, then <b>Dining Wrapped</b>" in steps
+    # Newer iOS puts Share in the menu by the address and the Shortcut under View More.
+    assert "tap Share (on newer iPhones it's in the menu by the address), then <b>Dining Wrapped</b>" in steps
+    assert "Tap <b>Allow</b> the first time." in steps
     assert "get.cbord.com/umass/full/funds_home.php" in steps
     assert "/iPhone/.test(navigator.userAgent)" in page
     assert "Add to iPhone button" in page  # the FAQ points at it
@@ -78,3 +80,24 @@ def test_empty_upload_message_fits_the_bookmark_and_the_shortcut(client):
     page = res.get_data(as_text=True)
     assert "Run Dining Wrapped again from GET." in page
     assert "bookmark again" not in page
+
+
+def test_iphone_steps_show_a_gif_of_the_shortcut(client, monkeypatch):
+    monkeypatch.setattr(app_module, "SHORTCUT_URL", ICLOUD)
+    page = client.get("/").get_data(as_text=True)
+    steps = page[page.index('class="home-iphone"'):page.index("<!-- /iphone -->")]
+    demo = steps[steps.index('class="home-iphone-demo"'):steps.index("</figure>")]
+    assert "imgs/how-to-iphone.gif" in demo
+    assert 'media="(prefers-reduced-motion: reduce)"' in demo and "imgs/how-to-iphone-still.png" in demo
+    assert 'loading="lazy"' in demo  # laptops never show this section, so they skip it
+    assert 'alt="How it works on iPhone: in Safari on GET' in demo
+
+
+def test_iphone_gif_is_small():
+    gif = Path(__file__).parent.parent / "static" / "styles" / "imgs" / "how-to-iphone.gif"
+    assert gif.read_bytes()[:6] == b"GIF89a"
+    assert gif.stat().st_size < 1_000_000
+    css = (Path(__file__).parent.parent / "static" / "styles" / "home.css").read_text(encoding="utf8")
+    rules = css.splitlines()
+    assert any(rule.startswith(".home-iphone-demo { width: min(240px, 70%);") for rule in rules)
+    assert any(rule.startswith(".home-iphone .home-iphone-button { display: block;") for rule in rules)  # beats the black hero button

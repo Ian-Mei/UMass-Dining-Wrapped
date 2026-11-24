@@ -112,12 +112,19 @@
               <script>if (/iPhone/.test(navigator.userAgent)) document.documentElement.classList.add("is-iphone");</script>
               <div class="home-iphone">
                 <h2 class="heading2">On your iPhone</h2>
+                <figure class="home-iphone-demo">
+                  <picture>
+                    <source media="(prefers-reduced-motion: reduce)" srcset="{{ url_for('static', filename='styles/imgs/how-to-iphone-still.png') }}">
+                    <img src="{{ url_for('static', filename='styles/imgs/how-to-iphone.gif') }}" width="540" height="1056" loading="lazy"
+                         alt="How it works on iPhone: in Safari on GET, tap Share, then Dining Wrapped, then Allow, and your Wrapped opens.">
+                  </picture>
+                </figure>
                 <ol>
                   <li>Add the shortcut:
                     <a href="{{ shortcut_url }}" class="home-hero-button1 button home-iphone-button" target="_blank" rel="noopener">Add to iPhone</a>
                   </li>
                   <li>Allow it to run: Settings &rsaquo; Apps &rsaquo; Shortcuts &rsaquo; Advanced &rsaquo; <b>Allow Running Scripts</b>. (On older iPhones: Settings &rsaquo; Shortcuts &rsaquo; Advanced.)</li>
-                  <li>In Safari, log into GET, tap Share, then <b>Dining Wrapped</b>.
+                  <li>In Safari, log into GET, tap Share (on newer iPhones it's in the menu by the address), then <b>Dining Wrapped</b>. Tap <b>Allow</b> the first time.
                     <a href="https://get.cbord.com/umass/full/funds_home.php" class="home-hero-button1 button home-iphone-button" target="_blank" rel="noopener">Open GET</a>
                   </li>
                 </ol>
