@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
 
-from flask import Flask, abort, jsonify, render_template, render_template_string, request, send_from_directory, url_for
+from flask import Flask, Response, abort, jsonify, render_template, render_template_string, request, send_from_directory, url_for
 from waitress import serve
 
 from wrapped import ParseError, build_wrapped
@@ -18,6 +18,9 @@ from wrapped.transactions import (
 GET_ORIGIN = "https://get.cbord.com"
 MAX_UPLOAD_MB = 25
 BOOKMARKLET_SOURCE = Path(__file__).parent / "static" / "scripts" / "bookmarklet.js"
+SHORTCUT_SOURCE = Path(__file__).parent / "static" / "scripts" / "shortcut.js"
+# The iCloud link to the iPhone Shortcut. The home page only shows the iPhone steps once it's set.
+SHORTCUT_URL = os.environ.get("WRAPPED_SHORTCUT_URL")
 # Local debugging only: when set, every upload is saved here (plus a traceback if it crashes).
 # Never set this on a public deployment; it stores people's transaction history.
 SAVE_UPLOADS_DIR = os.environ.get("WRAPPED_SAVE_UPLOADS")
@@ -86,7 +89,9 @@ def bookmarklet_href():
 
 
 def render_home(error=None, status=200, count_path="/"):
-    page = render_template("home.html", bookmarklet=bookmarklet_href(), error=error, count_path=count_path)
+    page = render_template(
+        "home.html", bookmarklet=bookmarklet_href(), shortcut_url=SHORTCUT_URL, error=error, count_path=count_path
+    )
     return page, status
 
 
@@ -103,8 +108,18 @@ def favicon():
 
 @app.get("/import")
 def import_from_get():
-    """Opened by the bookmarklet; receives the history PDFs from the GET tab."""
-    return render_template("import.html", get_origin=GET_ORIGIN)
+    """Opened by the bookmarklet, or in a box on GET by the iPhone Shortcut; receives the history
+    PDFs from the GET tab. Only GET may put it in a box."""
+    page = Response(render_template("import.html", get_origin=GET_ORIGIN))
+    page.headers["Content-Security-Policy"] = f"frame-ancestors {GET_ORIGIN}"
+    return page
+
+
+@app.get("/shortcut.js")
+def shortcut_code():
+    """The code to paste into the iPhone Shortcut, pointed at this site."""
+    code = SHORTCUT_SOURCE.read_text(encoding="utf-8").replace("__APP_ORIGIN__", public_origin())
+    return Response(code, mimetype="text/plain")
 
 
 @app.post("/rows")

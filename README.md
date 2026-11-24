@@ -67,7 +67,8 @@ can send. If the proxy changes `Host`, set `WRAPPED_PUBLIC_URL` (e.g. `https://w
 `render.yaml` sets the app up on [Render](https://render.com)'s free plan: in the dashboard, New >
 Blueprint, pick this repo, and it installs `requirements.txt` at the versions in `constraints.txt` and runs `python app.py` (waitress
 on Render's `PORT`). Every push to `main` redeploys. The free plan sleeps after 15 minutes without
-visits, so the first visit after that takes a little while to load. Don't set `WRAPPED_SAVE_UPLOADS`
+visits, so the first visit after that takes a little while to load. Set `WRAPPED_SHORTCUT_URL` to the
+iPhone Shortcut's iCloud link to show the iPhone steps; `/shortcut.js` is the code to paste into it. Don't set `WRAPPED_SAVE_UPLOADS`
 there: uploads should stay in memory.
 
 Visits are counted with [GoatCounter](https://www.goatcounter.com) (no cookies) when

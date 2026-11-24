@@ -108,6 +108,21 @@
                   </picture>
                 </figure>
               </div>
+              {% if shortcut_url %}
+              <script>if (/iPhone/.test(navigator.userAgent)) document.documentElement.classList.add("is-iphone");</script>
+              <div class="home-iphone">
+                <h2 class="heading2">On your iPhone</h2>
+                <ol>
+                  <li>Add the shortcut:
+                    <a href="{{ shortcut_url }}" class="home-hero-button1 button home-iphone-button" target="_blank" rel="noopener">Add to iPhone</a>
+                  </li>
+                  <li>Allow it to run: Settings &rsaquo; Apps &rsaquo; Shortcuts &rsaquo; Advanced &rsaquo; <b>Allow Running Scripts</b>.</li>
+                  <li>In Safari, log into GET, tap Share, then <b>Dining Wrapped</b>.
+                    <a href="https://get.cbord.com/umass/full/funds_home.php" class="home-hero-button1 button home-iphone-button" target="_blank" rel="noopener">Open GET</a>
+                  </li>
+                </ol>
+              </div><!-- /iphone -->
+              {% endif %}
             </div>
           </div>
         </div>
@@ -168,8 +183,13 @@
                   </span>
                   <span class="question-text1">
                     <span>
+                      {% if shortcut_url %}
+                      Yea, your Wrapped fits on a phone screen. On an iPhone, use the Add to iPhone button at the top.
+                      On anything else, do the GET part on your laptop.
+                      {% else %}
                       Yea, your Wrapped fits on a phone screen. Bookmarks are a pain on phones though, so do the GET
                       part on your laptop.
+                      {% endif %}
                     </span>
                   </span>
                 </div>
