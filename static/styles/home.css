@@ -600,7 +600,7 @@
 .home-iphone h2 { margin-bottom: var(--dl-space-space-unit); font-size: 1.75rem; }
 .home-iphone ol { padding-left: 1.5rem; line-height: 1.5; }
 .home-iphone li + li { margin-top: var(--dl-space-space-unit); }
-.home-iphone-demo { width: min(240px, 70%); margin: 0 auto var(--dl-space-space-unit); }
+.home-iphone-demo { width: min(240px, 70%); margin: var(--dl-space-space-unit) auto 0; }
 .home-iphone-demo img { display: block; width: 100%; height: auto; border-radius: 16px; }
 .home-iphone .home-iphone-button { display: block; margin-top: var(--dl-space-space-halfunit); padding: 12px 16px; border-color: #fff6e9; background-color: #fff6e9; color: #862632; text-align: center; text-decoration: none; }
 .home-error {
