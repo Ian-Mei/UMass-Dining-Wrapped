@@ -8,20 +8,23 @@ const APP = "https://wrapped.example";
 const code = fs.readFileSync(path.join(__dirname, "..", "static", "scripts", "shortcut.js"), "utf8").replace("__APP_ORIGIN__", APP);
 
 const element = (tag) => ({
-  tag, style: {}, children: [], append(...kids) { this.children.push(...kids); },
-  addEventListener() {}, setAttribute() {}, remove() { this.removed = true; }, submit() { this.submitted = true; },
+  tag, style: {}, children: [], on: {}, append(...kids) { this.children.push(...kids); },
+  addEventListener(type, fn) { this.on[type] = fn; }, setAttribute() {},
+  remove() { this.removed = true; if (tag === "iframe") this.contentWindow = null; }, submit() { this.submitted = true; },
 });
 
 // Runs the script on a pretend page and hands back what it did.
-const run = (hostname, fetchPdf) => {
+const run = (hostname, fetchPdf, overrides = {}) => {
   const made = [];
   const sent = [];
-  const listeners = [];
+  const listeners = { message: [], pageshow: [] };
+  const timers = [];
   let completed = 0;
   const root = element("html");
   const sandbox = {
     location: { hostname },
-    setTimeout, clearTimeout, AbortController,
+    setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); t.unref(); timers.push({ fn, ms }); return t; },
+    clearTimeout, AbortController,
     completion: () => { completed += 1; },
     fetch: fetchPdf,
     File: class { constructor(parts, name) { this.parts = parts; this.name = name; } },
@@ -36,14 +39,17 @@ const run = (hostname, fetchPdf) => {
         return e;
       },
     },
-    addEventListener: (type, fn) => listeners.push(fn),
-    removeEventListener() {},
+    addEventListener: (type, fn) => listeners[type].push(fn),
+    removeEventListener: (type, fn) => { listeners[type] = listeners[type].filter((f) => f !== fn); },
+    ...overrides,
   };
   sandbox.window = sandbox;
   vm.runInNewContext(code, sandbox);
   const frame = made.find((e) => e.tag === "iframe");
-  const say = (data, origin = APP, source = frame && frame.contentWindow) => listeners[0]({ origin, source, data });
-  return { made, sent, frame, say, completed: () => completed };
+  const say = (data, origin = APP, source = frame && frame.contentWindow) => Promise.all(listeners.message.map((fn) => fn({ origin, source, data })));
+  const box = made[0];
+  const notice = made[1];
+  return { made, sent, frame, say, box, notice, timers, listeners, sandbox, completed: () => completed };
 };
 
 const pdfResponse = () => ({
@@ -56,7 +62,8 @@ test("away from GET it says so and opens nothing", () => {
   const page = run("example.com");
   assert.strictEqual(page.frame, undefined);
   assert.strictEqual(page.completed(), 1);
-  assert.match(page.made[0].textContent, /log in/);
+  assert.match(page.notice.textContent, /log in/);
+  assert.ok(page.made.some((e) => e.tag === "button"), "it can be closed");
 });
 
 test("on GET it opens the import box and finishes the Shortcut right away", () => {
@@ -95,4 +102,55 @@ test("when it's done it posts the PDFs to the site in this tab", async () => {
   const input = page.made.find((e) => e.tag === "input");
   assert.strictEqual(input.name, "pdfs");
   assert.strictEqual(input.files.length, 2);
+});
+
+test("it says it's starting until the site answers", async () => {
+  const page = run("get.cbord.com", async () => pdfResponse());
+  assert.match(page.notice.textContent, /Starting/);
+  await page.say({ type: "fetch", id: 1, start: "2026-8-15", end: "2026-8-20" });
+  assert.strictEqual(page.notice.removed, true);
+  assert.strictEqual(page.frame.style.visibility, "visible");
+});
+
+test("it says so if the site never wakes up", () => {
+  const page = run("get.cbord.com");
+  page.timers.find((t) => t.ms === 90000).fn();
+  assert.strictEqual(page.frame.removed, true);
+  assert.match(page.notice.textContent, /run the Shortcut again/);
+});
+
+test("an iPhone too old to upload is told before it downloads anything", () => {
+  const page = run("get.cbord.com", undefined, { DataTransfer: class { constructor() { throw new TypeError("nope"); } } });
+  assert.strictEqual(page.frame, undefined);
+  assert.match(page.notice.textContent, /update/i);
+  assert.strictEqual(page.completed(), 1);
+});
+
+test("a failed upload shows an error instead of hanging", async () => {
+  const page = run("get.cbord.com", undefined, { File: class { constructor() { throw new Error("no file"); } } });
+  await page.say({ type: "done", pdfs: [new ArrayBuffer(4)] });
+  assert.match(page.notice.textContent, /Run the Shortcut again/);
+  assert.strictEqual(page.frame.removed, true);
+});
+
+test("closing mid-download stops it without an error", async () => {
+  let release;
+  let signal;
+  const page = run("get.cbord.com", (url, options) => { signal = options.signal; return new Promise((resolve) => { release = resolve; }); });
+  const pending = page.say({ type: "fetch", id: 1, start: "2026-8-15", end: "2026-8-20" });
+  page.made.find((e) => e.tag === "button").on.click();
+  assert.strictEqual(signal.aborted, true);
+  assert.strictEqual(page.box.removed, true);
+  page.frame.contentWindow = null;
+  release(pdfResponse());
+  await pending;
+  assert.strictEqual(page.listeners.message.length, 0);
+});
+
+test("coming back to GET from the results clears the old box", () => {
+  const page = run("get.cbord.com");
+  page.listeners.pageshow[0]({ persisted: false });
+  assert.notStrictEqual(page.box.removed, true);
+  page.listeners.pageshow[0]({ persisted: true });
+  assert.strictEqual(page.box.removed, true);
 });

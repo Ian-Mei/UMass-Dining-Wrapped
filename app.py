@@ -152,7 +152,7 @@ def save_upload(pdfs):
 def wrapped():
     pdfs = [f.read() for f in request.files.getlist("pdfs") if f.filename]
     if not pdfs:
-        return render_home("No transaction history came through. Try the Dining Wrapped bookmark again from GET.", 400)
+        return render_home("No transaction history came through. Run Dining Wrapped again from GET.", 400)
     saved_to = save_upload(pdfs) if uploads_dir() else None
     try:
         result, maybe_cut_off = build_from_pdfs(pdfs)

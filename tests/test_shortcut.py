@@ -49,6 +49,7 @@ def test_iphone_steps_link_to_the_shortcut(client, monkeypatch):
     steps = page[page.index('class="home-iphone"'):page.index("<!-- /iphone -->")]
     assert f'href="{ICLOUD}"' in steps and "Add to iPhone" in steps
     assert "Allow Running Scripts" in steps
+    assert "older iPhones: Settings &rsaquo; Shortcuts &rsaquo; Advanced" in steps
     assert "tap Share, then <b>Dining Wrapped</b>" in steps
     assert "get.cbord.com/umass/full/funds_home.php" in steps
     assert "/iPhone/.test(navigator.userAgent)" in page
@@ -60,3 +61,20 @@ def test_iphones_see_their_steps_instead_of_the_bookmark():
     assert ".home-iphone { display: none;" in css
     assert ".is-iphone .home-iphone { display: block; }" in css
     assert ".is-iphone .home-howto { display: none; }" in css
+
+
+def test_import_box_has_room_for_a_three_line_error():
+    code = (Path(__file__).parent.parent / "static" / "scripts" / "shortcut.js").read_text(encoding="utf8")
+    assert "height:132px" in code
+
+
+def test_progress_bar_never_moves_backward(client):
+    page = client.get("/import").get_data(as_text=True)
+    assert "furthest = Math.max(furthest, done / total)" in page
+
+
+def test_empty_upload_message_fits_the_bookmark_and_the_shortcut(client):
+    res = client.post("/wrapped", data={}, content_type="multipart/form-data")
+    page = res.get_data(as_text=True)
+    assert "Run Dining Wrapped again from GET." in page
+    assert "bookmark again" not in page

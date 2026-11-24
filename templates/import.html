@@ -55,13 +55,16 @@
       if (IN_FRAME) document.documentElement.classList.add("frame");
       else startLoadingScreen(document.getElementById("tv-screen"), {{ url_for('static', filename='imgs/umass.png')|tojson }});
 
+      // Splitting a full window adds to the total, so keep the bar at its furthest point.
+      let furthest = 0;
       const showProgress = (done, total) => {
         if (!IN_FRAME) {
           statusEl.textContent = `Downloading your history from GET (${done}/${total})`;
           return;
         }
         statusEl.textContent = `${done} of ${total}. Keep this page open.`;
-        document.getElementById("fill").style.width = `${(done / total) * 100}%`;
+        furthest = Math.max(furthest, done / total);
+        document.getElementById("fill").style.width = `${furthest * 100}%`;
       };
 
       const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -128,6 +131,7 @@
 
         statusEl.textContent = "Crunching the numbers…";
         if (IN_FRAME) {
+          document.getElementById("fill").style.width = "100%";
           HOME.postMessage({ type: "done", pdfs }, GET_ORIGIN, pdfs);
           return;
         }
